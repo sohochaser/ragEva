@@ -33,7 +33,7 @@ Python API (FastAPI)
 
 ## 核心实体
 
-`Dataset`、`DatasetVersion`、`EvaluationCase`、`TargetConfig`、`PredictionBatch`、`Prediction`、`MetricConfig`、`EvaluationScenario`、`EvaluationRun`、`ChunkMatchDecision`、`CaseResult`、`MetricResult`。HTTP 调用和文件导入都生成不可变 `PredictionBatch`，评分运行引用该批次。一个场景包含三项回答指标可编辑的评价标准；系统提示词结构和输出格式由代码版本控制。运行选择一个场景，并保存数据集版本、预测批次及来源快照、指标配置与版本、场景标准及系统提示词版本快照、评测模型地址、名称和非敏感参数、开始/结束时间和状态。逐样本保留答案、检索片段引用、耗时、评分、错误与证据。`ChunkMatchDecision` 保存参考与预测 chunk、判定理由、模型和规则版本，供复评与审查复用。密钥只保存受保护的引用，不进入导出文件。
+`Dataset`、`DatasetVersion`、`EvaluationCase`、`TargetConfig`、`PredictionBatch`、`Prediction`、`MetricConfig`、`EvaluationScenario`、`EvaluationRun`、`ChunkMatchDecision`、`CaseResult`、`MetricResult`。HTTP 调用和文件导入都生成不可变 `PredictionBatch`，评分运行引用该批次。一个场景包含三项回答指标可编辑的评价标准；系统提示词结构和输出格式由代码版本控制。运行选择一个场景，并保存数据集版本、预测批次及来源快照、指标配置与版本、场景标准及系统提示词版本快照、回答模型和独立向量模型的地址、名称及非敏感参数、相似度阈值、开始/结束时间和状态。逐样本保留答案、检索片段引用、耗时、评分、错误与证据。`ChunkMatchDecision` 保存参考与预测 chunk、余弦相似度、阈值和匹配判定，供复评与审查复用。密钥只保存受保护的引用，不进入导出文件。
 
 规范化样本有 `case_id` 和 `question`。端到端答案样本携带 `reference_answer`；检索样本携带有序 `reference_chunks`；同一题可以同时带两类标注，也可只带其中一种。每个参考 chunk 记录正文和所属 `document_id`，列表位置即从高到低的参考相关性顺序；不要求共享 chunk ID 或数值相关性分数。规范化预测包含 `case_id`，以及按评测类型提供的 `answer` 和按预测检索顺序排列的 `contexts`；检索评测必须有 `contexts`，答案评测必须有 `answer`，需要计算忠实度时还必须有 `contexts`。每个预测 chunk 包含正文和 `document_id`，可附带片段 ID、来源及耗时。HTTP 与文件适配器都输出这一结构。检索匹配先用文档 ID 限定候选，再判断对问题的关键证据是否由预测 chunk 保留；文档 ID 相同不能直接算命中。
 
@@ -57,4 +57,4 @@ Python API (FastAPI)
 
 ## 技术取舍
 
-首版使用 SQLite 保存本机数据，并使用 Huey 的 SQLite 队列驱动独立 Python Worker，无需单独运行 PostgreSQL 或 Redis。用户数据保存在可配置的本机目录，默认仅绑定 `127.0.0.1`。评测模型适配器调用用户配置的 OpenAI 兼容 API 地址、模型名与凭据；Ragas 等现有评测库承接回答指标，并在本项目适配层固定指标版本与提示词。检索指标在可审查的语义匹配判定之上按明确定义计算，匹配判定按数据集、预测内容与评测配置缓存。所有外部模型调用都可替换为测试桩，以便 CI 不依赖付费服务。
+首版使用 SQLite 保存本机数据，并使用 Huey 的 SQLite 队列驱动独立 Python Worker，无需单独运行 PostgreSQL 或 Redis。用户数据保存在可配置的本机目录，默认仅绑定 `127.0.0.1`。回答评测模型适配器调用用户配置的 OpenAI 兼容 API 地址、模型名与凭据；独立的向量模型适配器负责批量生成参考与预测 chunk 的向量，按模型版本和正文缓存。同一文档 ID 内计算余弦相似度，并使用与模型绑定的阈值生成可审查的匹配候选。Ragas 等现有评测库承接回答指标，在本项目适配层固定指标版本与提示词。所有外部模型调用都可替换为测试桩，以便 CI 不依赖付费服务。
