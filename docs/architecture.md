@@ -8,12 +8,13 @@ React + TypeScript
     | /api/v1 (JSON)
     v
 Python API (FastAPI)
-    |-- 数据集、目标配置、预测结果导入、运行、结果 API
+    |-- 数据集、候选审核、目标配置、预测结果导入、运行、结果 API
     |-- 本机配置与密钥引用
     |
     +--> SQLite (数据集、预测结果、运行与评分)
     +--> SQLite 任务队列 --> Python Worker
-                            |-- HTTP 调用或导入结果读取
+                            |-- HTTP JSON/SSE 调用或导入结果读取
+                            |-- 文档样本候选生成与查重
                             |-- 统一预测结果模型
                             |-- chunk 语义匹配与检索指标
                             |-- LLM 指标适配器
@@ -22,10 +23,10 @@ Python API (FastAPI)
 
 ## 组件边界
 
-- `frontend/`：React + TypeScript。数据集、输入方式、系统连接、预测结果导入、场景评价标准配置、运行、总体与逐样本结果视图；不持有第三方 API 密钥。
+- `frontend/`：React + TypeScript。数据集、生成候选审核、输入方式、系统连接、预测结果导入、场景评价标准配置、运行、总体与逐样本结果视图；不持有第三方 API 密钥。
 - `backend/api/`：FastAPI、输入校验和契约序列化；不直接执行长评测任务。
 - `backend/domain/`：数据集版本、指标输入输出、运行状态机与结果聚合规则；不依赖 Web、数据库或队列框架。
-- `backend/adapters/`：目标 RAG HTTP 协议、CSV/JSONL 预测结果导入、评测模型和持久化实现。HTTP 与文件适配器产出同一预测结果模型。
+- `backend/adapters/`：目标 RAG HTTP JSON/SSE 协议、CSV/JSONL 预测结果导入、文档读取、生成模型、评测模型和持久化实现。HTTP 与文件适配器产出同一预测结果模型。
 - `backend/worker/`：样本调度、限流、重试、取消和结果落库。队列实现可替换；初版选成熟组件，避免自制任务系统。
 - `contracts/`：OpenAPI 和可共享的示例请求、响应；前端类型由契约生成。
 
@@ -33,7 +34,7 @@ Python API (FastAPI)
 
 ## 核心实体
 
-`Dataset`、`DatasetVersion`、`EvaluationCase`、`TargetConfig`、`PredictionBatch`、`Prediction`、`MetricConfig`、`EvaluationScenario`、`EvaluationRun`、`ChunkMatchDecision`、`CaseResult`、`MetricResult`。HTTP 调用和文件导入都生成不可变 `PredictionBatch`，评分运行引用该批次。一个场景包含三项回答指标可编辑的评价标准；系统提示词结构和输出格式由代码版本控制。运行选择一个场景，并保存数据集版本、预测批次及来源快照、指标配置与版本、场景标准及系统提示词版本快照、回答模型和独立向量模型的地址、名称及非敏感参数、相似度阈值、开始/结束时间和状态。逐样本保留答案、检索片段引用、耗时、评分、错误与证据。`ChunkMatchDecision` 保存参考与预测 chunk、余弦相似度、阈值和匹配判定，供复评与审查复用。密钥只保存受保护的引用，不进入导出文件。
+`DocumentCollection`、`DocumentVersion`、`GeneratedCandidate`、`GenerationRun`、`Dataset`、`DatasetVersion`、`EvaluationCase`、`TargetConfig`、`PredictionBatch`、`Prediction`、`MetricConfig`、`EvaluationScenario`、`EvaluationRun`、`ChunkMatchDecision`、`CaseResult`、`MetricResult`。生成候选记录文档集合与版本、支撑 chunk、生成模型与提示词版本及审核状态；只有审核通过、完成查重和字段校验的候选才能发布为不可变数据集版本。HTTP 调用和文件导入都生成不可变 `PredictionBatch`，评分运行引用该批次。一个场景包含三项回答指标可编辑的评价标准；系统提示词结构和输出格式由代码版本控制。运行选择一个场景，并保存数据集版本、预测批次及来源快照、指标配置与版本、场景标准及系统提示词版本快照、回答模型和独立向量模型的地址、名称及非敏感参数、相似度阈值、开始/结束时间和状态。逐样本保留答案、检索片段引用、耗时、评分、错误与证据。`ChunkMatchDecision` 保存参考与预测 chunk、余弦相似度、阈值和匹配判定，供复评与审查复用。密钥只保存受保护的引用，不进入导出文件。
 
 规范化样本有 `case_id` 和 `question`。端到端答案样本携带 `reference_answer`；检索样本携带有序 `reference_chunks`；同一题可以同时带两类标注，也可只带其中一种。每个参考 chunk 记录正文和所属 `document_id`，列表位置即从高到低的参考相关性顺序；不要求共享 chunk ID 或数值相关性分数。规范化预测包含 `case_id`，以及按评测类型提供的 `answer` 和按预测检索顺序排列的 `contexts`；检索评测必须有 `contexts`，答案评测必须有 `answer`，需要计算忠实度时还必须有 `contexts`。每个预测 chunk 包含正文和 `document_id`，可附带片段 ID、来源及耗时。HTTP 与文件适配器都输出这一结构。检索匹配先用文档 ID 限定候选，再用同一模型的余弦相似度和阈值建立候选边；文档 ID 相同不能直接算命中。
 
@@ -45,9 +46,13 @@ Python API (FastAPI)
 
 ## API 草案
 
-被测 RAG 服务的首版通用契约为 `POST {target_url}`，请求 JSON 为 `{"case_id": "...", "question": "..."}`，典型响应 JSON 为 `{"answer": "...", "contexts": [{"document_id": "...", "text": "...", "chunk_id": "...", "source": "..."}]}`。`answer` 和 `contexts` 按评测类型校验；检索评测必须有 `contexts`，回答评测必须有 `answer`，忠实度还需要 `contexts`。`contexts` 顺序即预测检索排序，每个 chunk 的 `document_id` 与 `text` 必填，`chunk_id`、`source` 可选。连接测试校验该契约，调用耗时由评测系统测量。后续真实系统协议通过适配器转换到规范化预测模型。
+被测 RAG 服务的首版通用契约为 `POST {target_url}`，请求 JSON 为 `{"case_id": "...", "question": "..."}`，典型非流式响应 JSON 为 `{"answer": "...", "contexts": [{"document_id": "...", "text": "...", "chunk_id": "...", "source": "..."}]}`。请求增加 `stream: true` 时使用 SSE；适配器拼接 `answer.delta`，收集 `contexts`，要求成功结束事件后才生成规范化预测结果，流内错误和意外断流保留失败原因。事件字段、TTFT 与 TTLT 的定义见 `requirements.md`。`answer` 和 `contexts` 按评测类型校验；检索评测必须有 `contexts`，回答评测必须有 `answer`，忠实度还需要 `contexts`。`contexts` 顺序即预测检索排序，每个 chunk 的 `document_id` 与 `text` 必填，`chunk_id`、`source` 可选。连接测试校验相应契约，调用耗时由评测系统测量。后续真实系统协议通过适配器转换到规范化预测模型。
+
+评测运行、样本、预测批次与重试尝试关联 OpenTelemetry trace ID；API 到 Worker 的队列消息传递 trace 上下文，Jaeger 提供查阅入口。trace 内容与保留期限按 `requirements.md` 的已确认约束和待确认细节执行；凭据及认证头不进入 trace。
 
 - `POST /api/v1/datasets/import`，`GET /api/v1/datasets/{id}/versions`
+- `POST /api/v1/document-collections`，`POST /api/v1/document-collections/{id}/generations`，`GET /api/v1/generations/{id}/candidates`
+- `PATCH /api/v1/candidates/{id}`，`POST /api/v1/candidates/publish`：审核、校验并发布不可变数据集版本。
 - `POST /api/v1/targets`，`POST /api/v1/targets/{id}/test`
 - `POST /api/v1/predictions/import`，`GET /api/v1/predictions/{id}`
 - `GET /api/v1/scenarios`，`POST /api/v1/scenarios`，`PUT /api/v1/scenarios/{id}`，`POST /api/v1/scenarios/{id}/preview`
