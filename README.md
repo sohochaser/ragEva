@@ -7,4 +7,4 @@
 - [开发与验收流程](docs/workflow.md)
 - [任务拆解](docs/plan.md)
 
-上述文档中的“待确认”项需要确定后，才作为实现基线。
+MVP 需求基线见 `docs/requirements.md`；后续实现按其中的验收场景推进。
