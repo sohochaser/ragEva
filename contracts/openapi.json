@@ -48,6 +48,74 @@
         "title": "Body_import_dataset_api_v1_datasets_import_post",
         "type": "object"
       },
+      "Body_import_predictions_api_v1_predictions_import_post": {
+        "properties": {
+          "dataset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Id"
+          },
+          "dataset_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Name"
+          },
+          "dataset_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Version"
+          },
+          "evaluation_type": {
+            "enum": [
+              "answer",
+              "retrieval",
+              "both"
+            ],
+            "title": "Evaluation Type",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mapping"
+          }
+        },
+        "required": [
+          "file",
+          "evaluation_type"
+        ],
+        "title": "Body_import_predictions_api_v1_predictions_import_post",
+        "type": "object"
+      },
       "CaseResponse": {
         "properties": {
           "case_id": {
@@ -231,6 +299,234 @@
           "message"
         ],
         "title": "ImportIssueResponse",
+        "type": "object"
+      },
+      "PredictedChunkResponse": {
+        "properties": {
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "document_id",
+          "chunk_id",
+          "source"
+        ],
+        "title": "PredictedChunkResponse",
+        "type": "object"
+      },
+      "PredictionBatchDetail": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "evaluation_type": {
+            "enum": [
+              "answer",
+              "retrieval",
+              "both"
+            ],
+            "title": "Evaluation Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "matched_count": {
+            "title": "Matched Count",
+            "type": "integer"
+          },
+          "missing_case_count": {
+            "title": "Missing Case Count",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionResponse"
+            },
+            "title": "Predictions",
+            "type": "array"
+          },
+          "record_count": {
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "source_filename": {
+            "title": "Source Filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "dataset_id",
+          "dataset_version",
+          "evaluation_type",
+          "source_filename",
+          "created_at",
+          "record_count",
+          "matched_count",
+          "missing_case_count",
+          "offset",
+          "limit",
+          "predictions"
+        ],
+        "title": "PredictionBatchDetail",
+        "type": "object"
+      },
+      "PredictionBatchSummary": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "evaluation_type": {
+            "enum": [
+              "answer",
+              "retrieval",
+              "both"
+            ],
+            "title": "Evaluation Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "matched_count": {
+            "title": "Matched Count",
+            "type": "integer"
+          },
+          "missing_case_count": {
+            "title": "Missing Case Count",
+            "type": "integer"
+          },
+          "record_count": {
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "source_filename": {
+            "title": "Source Filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "dataset_id",
+          "dataset_version",
+          "evaluation_type",
+          "source_filename",
+          "created_at",
+          "record_count",
+          "matched_count",
+          "missing_case_count"
+        ],
+        "title": "PredictionBatchSummary",
+        "type": "object"
+      },
+      "PredictionResponse": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "contexts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PredictedChunkResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contexts"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          }
+        },
+        "required": [
+          "case_id",
+          "answer",
+          "contexts",
+          "latency_ms"
+        ],
+        "title": "PredictionResponse",
         "type": "object"
       },
       "ReferenceChunkResponse": {
@@ -633,6 +929,137 @@
         "summary": "Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/predictions": {
+      "get": {
+        "operationId": "list_batches_api_v1_predictions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PredictionBatchSummary"
+                  },
+                  "title": "Response List Batches Api V1 Predictions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Batches",
+        "tags": [
+          "predictions"
+        ]
+      }
+    },
+    "/api/v1/predictions/import": {
+      "post": {
+        "operationId": "import_predictions_api_v1_predictions_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_predictions_api_v1_predictions_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionBatchSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportFailure"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Import Predictions",
+        "tags": [
+          "predictions"
+        ]
+      }
+    },
+    "/api/v1/predictions/{batch_id}": {
+      "get": {
+        "operationId": "get_batch_api_v1_predictions__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionBatchDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Batch",
+        "tags": [
+          "predictions"
         ]
       }
     }

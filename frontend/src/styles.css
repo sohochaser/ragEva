@@ -104,6 +104,8 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .dataset-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; min-height: 70px; padding: 12px 21px; border-bottom: 1px solid #e3e9e7; }
 .dataset-toolbar h2 { margin: 0 0 4px; overflow-wrap: anywhere; font-size: 16px; font-weight: 650; }
 .dataset-toolbar span { color: #70817d; font-size: 11px; }
+.batch-counts { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.batch-counts span { color: #3f6c60; font-size: 12px; white-space: nowrap; }
 .version-picker { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; color: #657672; font-size: 12px; }
 .version-picker select { min-width: 74px; height: 32px; padding: 0 8px; border: 1px solid #cdd8d5; border-radius: 4px; background: #fff; color: #344641; }
 .case-workspace { display: grid; grid-template-columns: minmax(185px, 28%) minmax(0, 1fr); min-height: 580px; }
@@ -148,6 +150,7 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .mapping-fields legend { padding: 0; color: #394b46; font-size: 12px; font-weight: 650; }
 .mapping-fields p { margin: 5px 0 12px; color: #7a8985; font-size: 11px; }
 .mapping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, .35fr); gap: 12px; }
 .import-issues { max-height: 180px; overflow: auto; padding: 12px; border: 1px solid #e9c8c4; border-radius: 4px; background: #fff7f6; color: #9c3b34; font-size: 12px; }
 .import-issues ul { margin: 8px 0 0; padding-left: 18px; }
 .import-issues li + li { margin-top: 5px; }
@@ -171,6 +174,8 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .case-list { border-right: 0; border-bottom: 1px solid #e4ebe8; }
   .case-row { min-height: 68px; }
   .case-detail { min-height: 300px; }
+  .batch-counts { gap: 7px; }
+  .batch-counts span { font-size: 11px; }
   .dialog-heading { padding: 20px 20px 15px; }
   .import-dialog form { padding: 20px; }
 }
@@ -182,4 +187,6 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .nav-item svg { width: 14px; }
   .main-content { padding: 25px 14px; }
   .mapping-grid { grid-template-columns: 1fr; }
+  .sidebar nav { gap: 1px; }
+  .nav-item { gap: 3px; padding: 0 4px; font-size: 10px; }
 }

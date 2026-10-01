@@ -6,6 +6,8 @@ US-001 已落地的运行基座：`backend/api/` 与 `backend/worker/` 是两个
 
 US-002 已落地的数据集边界：`backend/adapters/dataset_files.py` 读取 CSV/JSONL，`backend/domain/datasets.py` 校验规范化样本，`backend/adapters/dataset_store.py` 在单个 SQLite 事务中写入数据集和版本。每次导入是完整版本快照，旧版只读；`backend/api/datasets.py` 提供导入、列表与分页读取。React 数据集页经生成的 OpenAPI 类型访问这些接口。当前业务库为数据目录下的 `rageva.sqlite3`。
 
+US-003 已落地的预测边界：`backend/domain/predictions.py` 归一化答案、有序预测 chunk 和可选耗时，`backend/adapters/prediction_store.py` 保存不可变批次并绑定数据集版本。同文件建集与预测写入共用 SQLite 事务。`backend/api/predictions.py` 提供导入、列表与分页预览；文件适配器不调用被测 RAG。React 预测批次页显示匹配与未匹配数量和逐题内容。
+
 ```text
 React + TypeScript
     |

@@ -57,57 +57,66 @@ class DatasetStore:
     def import_cases(
         self, name: str | None, dataset_id: str | None, filename: str, cases: list[EvaluationCase]
     ) -> dict[str, Any]:
-        created_at = datetime.now(UTC).isoformat()
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
-            if dataset_id is None:
-                if name is None:
-                    raise ValueError("新建数据集需要名称")
-                dataset_id = str(uuid4())
-                connection.execute(
-                    "INSERT INTO datasets (id, name, created_at) VALUES (?, ?, ?)",
-                    (dataset_id, name, created_at),
-                )
-                version = 1
-            else:
-                exists = connection.execute(
-                    "SELECT 1 FROM datasets WHERE id = ?", (dataset_id,)
-                ).fetchone()
-                if exists is None:
-                    raise DatasetNotFound(dataset_id)
-                latest = connection.execute(
-                    "SELECT COALESCE(MAX(version), 0) FROM dataset_versions WHERE dataset_id = ?",
-                    (dataset_id,),
-                ).fetchone()[0]
-                version = int(latest) + 1
-            version_id = str(uuid4())
+            summary = self.insert_version(connection, name, dataset_id, filename, cases)
+        return summary
+
+    def insert_version(
+        self,
+        connection: sqlite3.Connection,
+        name: str | None,
+        dataset_id: str | None,
+        filename: str,
+        cases: list[EvaluationCase],
+    ) -> dict[str, Any]:
+        created_at = datetime.now(UTC).isoformat()
+        if dataset_id is None:
+            if name is None:
+                raise ValueError("新建数据集需要名称")
+            dataset_id = str(uuid4())
             connection.execute(
-                "INSERT INTO dataset_versions "
-                "(id, dataset_id, version, case_count, source_filename, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (version_id, dataset_id, version, len(cases), filename, created_at),
+                "INSERT INTO datasets (id, name, created_at) VALUES (?, ?, ?)",
+                (dataset_id, name, created_at),
             )
-            connection.executemany(
-                "INSERT INTO evaluation_cases "
-                "(version_id, position, case_id, question, reference_answer, "
-                "reference_chunks_json) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                [
-                    (
-                        version_id,
-                        position,
-                        case.case_id,
-                        case.question,
-                        case.reference_answer,
-                        json.dumps(
-                            [vars(chunk) for chunk in case.reference_chunks], ensure_ascii=False
-                        )
-                        if case.reference_chunks is not None
-                        else None,
-                    )
-                    for position, case in enumerate(cases)
-                ],
-            )
+            version = 1
+        else:
+            exists = connection.execute(
+                "SELECT 1 FROM datasets WHERE id = ?", (dataset_id,)
+            ).fetchone()
+            if exists is None:
+                raise DatasetNotFound(dataset_id)
+            latest = connection.execute(
+                "SELECT COALESCE(MAX(version), 0) FROM dataset_versions WHERE dataset_id = ?",
+                (dataset_id,),
+            ).fetchone()[0]
+            version = int(latest) + 1
+        version_id = str(uuid4())
+        connection.execute(
+            "INSERT INTO dataset_versions "
+            "(id, dataset_id, version, case_count, source_filename, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (version_id, dataset_id, version, len(cases), filename, created_at),
+        )
+        connection.executemany(
+            "INSERT INTO evaluation_cases "
+            "(version_id, position, case_id, question, reference_answer, "
+            "reference_chunks_json) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    version_id,
+                    position,
+                    case.case_id,
+                    case.question,
+                    case.reference_answer,
+                    json.dumps([vars(chunk) for chunk in case.reference_chunks], ensure_ascii=False)
+                    if case.reference_chunks is not None
+                    else None,
+                )
+                for position, case in enumerate(cases)
+            ],
+        )
         return {
             "id": version_id,
             "dataset_id": dataset_id,

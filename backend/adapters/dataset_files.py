@@ -11,7 +11,11 @@ from backend.domain.datasets import ImportIssue, SourceRow
 
 
 def read_rows(
-    filename: str, content: bytes, mapping: Mapping[str, str], explicit_fields: set[str]
+    filename: str,
+    content: bytes,
+    mapping: Mapping[str, str],
+    explicit_fields: set[str],
+    required_columns: tuple[str, ...] = ("case_id", "question"),
 ) -> tuple[list[SourceRow], list[ImportIssue]]:
     extension = Path(filename).suffix.lower()
     if extension not in {".csv", ".jsonl"}:
@@ -22,7 +26,7 @@ def read_rows(
         return [], [ImportIssue(None, "file", "invalid_encoding", "文件必须使用 UTF-8 编码")]
     if extension == ".jsonl":
         return _read_jsonl(text)
-    return _read_csv(text, mapping, explicit_fields)
+    return _read_csv(text, mapping, explicit_fields, required_columns)
 
 
 def _read_jsonl(text: str) -> tuple[list[SourceRow], list[ImportIssue]]:
@@ -44,7 +48,10 @@ def _read_jsonl(text: str) -> tuple[list[SourceRow], list[ImportIssue]]:
 
 
 def _read_csv(
-    text: str, mapping: Mapping[str, str], explicit_fields: set[str]
+    text: str,
+    mapping: Mapping[str, str],
+    explicit_fields: set[str],
+    required_columns: tuple[str, ...],
 ) -> tuple[list[SourceRow], list[ImportIssue]]:
     reader = csv.DictReader(io.StringIO(text, newline=""), strict=True)
     try:
@@ -55,7 +62,7 @@ def _read_csv(
             return [], [ImportIssue(1, None, "duplicate_column", "CSV 表头列名重复")]
         missing = [
             field
-            for field in ("case_id", "question", *sorted(explicit_fields))
+            for field in (*required_columns, *sorted(explicit_fields))
             if mapping[field] not in header
         ]
         if missing:

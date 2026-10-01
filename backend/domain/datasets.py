@@ -37,8 +37,10 @@ class EvaluationCase:
     reference_chunks: tuple[ReferenceChunk, ...] | None
 
 
-def parse_field_mapping(raw: str | None) -> tuple[dict[str, str], list[ImportIssue]]:
-    mapping = {field: field for field in FIELDS}
+def parse_field_mapping(
+    raw: str | None, fields: tuple[str, ...] = FIELDS
+) -> tuple[dict[str, str], list[ImportIssue]]:
+    mapping = {field: field for field in fields}
     if raw is None or not raw.strip():
         return mapping, []
     try:
@@ -53,7 +55,7 @@ def parse_field_mapping(raw: str | None) -> tuple[dict[str, str], list[ImportIss
         ]
     issues: list[ImportIssue] = []
     for field, source in supplied.items():
-        if field not in FIELDS or not isinstance(source, str) or not source.strip():
+        if field not in fields or not isinstance(source, str) or not source.strip():
             issues.append(
                 ImportIssue(None, "mapping", "invalid_mapping", f"无效的字段映射：{field}")
             )

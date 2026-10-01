@@ -106,6 +106,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Batches */
+        get: operations["list_batches_api_v1_predictions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/predictions/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Predictions */
+        post: operations["import_predictions_api_v1_predictions_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/predictions/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Batch */
+        get: operations["get_batch_api_v1_predictions__batch_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -116,6 +167,24 @@ export interface components {
             dataset_id?: string | null;
             /** Dataset Name */
             dataset_name?: string | null;
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping?: string | null;
+        };
+        /** Body_import_predictions_api_v1_predictions_import_post */
+        Body_import_predictions_api_v1_predictions_import_post: {
+            /** Dataset Id */
+            dataset_id?: string | null;
+            /** Dataset Name */
+            dataset_name?: string | null;
+            /** Dataset Version */
+            dataset_version?: number | null;
+            /**
+             * Evaluation Type
+             * @enum {string}
+             */
+            evaluation_type: "answer" | "retrieval" | "both";
             /** File */
             file: string;
             /** Mapping */
@@ -182,6 +251,82 @@ export interface components {
             line: number | null;
             /** Message */
             message: string;
+        };
+        /** PredictedChunkResponse */
+        PredictedChunkResponse: {
+            /** Chunk Id */
+            chunk_id: string | null;
+            /** Document Id */
+            document_id: string;
+            /** Source */
+            source: string | null;
+            /** Text */
+            text: string;
+        };
+        /** PredictionBatchDetail */
+        PredictionBatchDetail: {
+            /** Created At */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Version */
+            dataset_version: number;
+            /**
+             * Evaluation Type
+             * @enum {string}
+             */
+            evaluation_type: "answer" | "retrieval" | "both";
+            /** Id */
+            id: string;
+            /** Limit */
+            limit: number;
+            /** Matched Count */
+            matched_count: number;
+            /** Missing Case Count */
+            missing_case_count: number;
+            /** Offset */
+            offset: number;
+            /** Predictions */
+            predictions: components["schemas"]["PredictionResponse"][];
+            /** Record Count */
+            record_count: number;
+            /** Source Filename */
+            source_filename: string;
+        };
+        /** PredictionBatchSummary */
+        PredictionBatchSummary: {
+            /** Created At */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Version */
+            dataset_version: number;
+            /**
+             * Evaluation Type
+             * @enum {string}
+             */
+            evaluation_type: "answer" | "retrieval" | "both";
+            /** Id */
+            id: string;
+            /** Matched Count */
+            matched_count: number;
+            /** Missing Case Count */
+            missing_case_count: number;
+            /** Record Count */
+            record_count: number;
+            /** Source Filename */
+            source_filename: string;
+        };
+        /** PredictionResponse */
+        PredictionResponse: {
+            /** Answer */
+            answer: string | null;
+            /** Case Id */
+            case_id: string;
+            /** Contexts */
+            contexts: components["schemas"]["PredictedChunkResponse"][] | null;
+            /** Latency Ms */
+            latency_ms: number | null;
         };
         /** ReferenceChunkResponse */
         ReferenceChunkResponse: {
@@ -414,6 +559,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    list_batches_api_v1_predictions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionBatchSummary"][];
+                };
+            };
+        };
+    };
+    import_predictions_api_v1_predictions_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_predictions_api_v1_predictions_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionBatchSummary"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportFailure"];
+                };
+            };
+        };
+    };
+    get_batch_api_v1_predictions__batch_id__get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionBatchDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
