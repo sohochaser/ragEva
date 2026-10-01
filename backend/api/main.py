@@ -5,6 +5,7 @@ from typing import Literal
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
+from backend.api.datasets import create_dataset_router
 from backend.config import Settings
 from backend.health import worker_is_ready
 
@@ -17,6 +18,7 @@ class HealthResponse(BaseModel):
 def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or Settings.from_env()
     application = FastAPI(title="ragEva API", version="0.1.0")
+    application.include_router(create_dataset_router(config))
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live() -> HealthResponse:

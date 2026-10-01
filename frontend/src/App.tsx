@@ -1,7 +1,8 @@
-import { Activity, ArrowUpRight, RefreshCw, Server, Workflow } from 'lucide-react'
+import { Activity, ArrowUpRight, Database, RefreshCw, Server, Workflow } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { readHealth, type ServiceState } from './api/health'
+import { DatasetPage } from './datasets/DatasetPage'
 
 type StatusDashboardProps = {
   api: ServiceState
@@ -44,15 +45,7 @@ function StatusItem({
 
 export function StatusDashboard({ api, worker, refreshedAt, onRefresh }: StatusDashboardProps) {
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">r</span><span>ragEva</span></div>
-        <nav aria-label="主导航">
-          <span className="nav-item nav-active"><Activity size={17} aria-hidden="true" />系统状态</span>
-        </nav>
-        <div className="sidebar-foot">本机工作台</div>
-      </aside>
-      <main className="main-content">
+    <>
         <header className="page-header">
           <div>
             <p className="eyebrow">WORKSPACE</p>
@@ -75,12 +68,12 @@ export function StatusDashboard({ api, worker, refreshedAt, onRefresh }: StatusD
             API 文档 <ArrowUpRight size={16} aria-hidden="true" />
           </a>
         </section>
-      </main>
-    </div>
+    </>
   )
 }
 
 export function App() {
+  const [page, setPage] = useState<'datasets' | 'status'>('datasets')
   const [api, setApi] = useState<ServiceState>('checking')
   const [worker, setWorker] = useState<ServiceState>('checking')
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
@@ -98,5 +91,20 @@ export function App() {
     return () => window.clearInterval(interval)
   }, [refresh])
 
-  return <StatusDashboard api={api} worker={worker} refreshedAt={refreshedAt} onRefresh={() => void refresh()} />
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand"><span className="brand-mark">r</span><span>ragEva</span></div>
+        <nav aria-label="主导航">
+          <button type="button" className={`nav-item ${page === 'datasets' ? 'nav-active' : ''}`} onClick={() => setPage('datasets')}><Database size={17} aria-hidden="true" />数据集</button>
+          <button type="button" className={`nav-item ${page === 'status' ? 'nav-active' : ''}`} onClick={() => setPage('status')}><Activity size={17} aria-hidden="true" />系统状态</button>
+        </nav>
+        <div className="sidebar-foot">本机工作台</div>
+      </aside>
+      <main className="main-content">
+        <div hidden={page !== 'datasets'}><DatasetPage /></div>
+        {page === 'status' && <StatusDashboard api={api} worker={worker} refreshedAt={refreshedAt} onRefresh={() => void refresh()} />}
+      </main>
+    </div>
+  )
 }

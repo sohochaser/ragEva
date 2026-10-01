@@ -4,6 +4,74 @@
  */
 
 export interface paths {
+    "/api/v1/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Datasets */
+        get: operations["list_datasets_api_v1_datasets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Dataset */
+        post: operations["import_dataset_api_v1_datasets_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Versions */
+        get: operations["list_versions_api_v1_datasets__dataset_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Version */
+        get: operations["get_version_api_v1_datasets__dataset_id__versions__version__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -42,6 +110,48 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_import_dataset_api_v1_datasets_import_post */
+        Body_import_dataset_api_v1_datasets_import_post: {
+            /** Dataset Id */
+            dataset_id?: string | null;
+            /** Dataset Name */
+            dataset_name?: string | null;
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping?: string | null;
+        };
+        /** CaseResponse */
+        CaseResponse: {
+            /** Case Id */
+            case_id: string;
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string | null;
+            /** Reference Chunks */
+            reference_chunks: components["schemas"]["ReferenceChunkResponse"][] | null;
+        };
+        /** DatasetSummary */
+        DatasetSummary: {
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** Latest Case Count */
+            latest_case_count: number;
+            /** Latest Version */
+            latest_version: number;
+            /** Name */
+            name: string;
+            /** Version Count */
+            version_count: number;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /** HealthResponse */
         HealthResponse: {
             /**
@@ -55,6 +165,82 @@ export interface components {
              */
             status: "ok" | "unavailable";
         };
+        /** ImportFailure */
+        ImportFailure: {
+            /** Error */
+            error: string;
+            /** Issues */
+            issues: components["schemas"]["ImportIssueResponse"][];
+        };
+        /** ImportIssueResponse */
+        ImportIssueResponse: {
+            /** Code */
+            code: string;
+            /** Field */
+            field: string | null;
+            /** Line */
+            line: number | null;
+            /** Message */
+            message: string;
+        };
+        /** ReferenceChunkResponse */
+        ReferenceChunkResponse: {
+            /** Document Id */
+            document_id: string;
+            /** Text */
+            text: string;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
+        /** VersionDetail */
+        VersionDetail: {
+            /** Case Count */
+            case_count: number;
+            /** Cases */
+            cases: components["schemas"]["CaseResponse"][];
+            /** Created At */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Id */
+            id: string;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Source Filename */
+            source_filename: string;
+            /** Total */
+            total: number;
+            /** Version */
+            version: number;
+        };
+        /** VersionSummary */
+        VersionSummary: {
+            /** Case Count */
+            case_count: number;
+            /** Created At */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Id */
+            id: string;
+            /** Source Filename */
+            source_filename: string;
+            /** Version */
+            version: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -64,6 +250,125 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_datasets_api_v1_datasets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetSummary"][];
+                };
+            };
+        };
+    };
+    import_dataset_api_v1_datasets_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_dataset_api_v1_datasets_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportFailure"];
+                };
+            };
+        };
+    };
+    list_versions_api_v1_datasets__dataset_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_version_api_v1_datasets__dataset_id__versions__version__get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     live_api_v1_health_live_get: {
         parameters: {
             query?: never;

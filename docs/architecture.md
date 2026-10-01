@@ -4,6 +4,8 @@
 
 US-001 已落地的运行基座：`backend/api/` 与 `backend/worker/` 是两个独立进程；Worker 监督 Huey SQLite consumer，并把心跳写入本机数据目录的 `health.sqlite3`。管理 API 的 `/api/v1/health/live` 只检查自身，`/api/v1/health/ready` 根据 Worker 进程及心跳是否新鲜返回 200 或 503。心跳库与任务队列分离，当前不承载业务数据。前端由 Vite 独立服务，开发代理访问管理 API；契约快照为 `contracts/openapi.json`，前端类型由它生成。
 
+US-002 已落地的数据集边界：`backend/adapters/dataset_files.py` 读取 CSV/JSONL，`backend/domain/datasets.py` 校验规范化样本，`backend/adapters/dataset_store.py` 在单个 SQLite 事务中写入数据集和版本。每次导入是完整版本快照，旧版只读；`backend/api/datasets.py` 提供导入、列表与分页读取。React 数据集页经生成的 OpenAPI 类型访问这些接口。当前业务库为数据目录下的 `rageva.sqlite3`。
+
 ```text
 React + TypeScript
     |
