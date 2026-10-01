@@ -1,6 +1,6 @@
 # 系统架构草案
 
-状态：待确认。采用前后端分离的单仓库，React 前端与 Python 后端通过版本化 HTTP API 通信。两个版本的具体含义确认后，再固定部署拓扑；评测领域模型和接口契约应保持一致。
+状态：架构草案。采用前后端分离的单仓库，一套 Python 后端和一个 React 前端通过版本化 HTTP API 通信。API 进程与 Worker 使用同一套 Python 后端代码，分别承担交互请求和异步评测任务。
 
 ```text
 React + TypeScript
@@ -24,7 +24,7 @@ Python API (FastAPI)
 - `frontend/`：React + TypeScript。数据集、系统连接、运行、结果与比较视图；不持有第三方 API 密钥。
 - `backend/api/`：FastAPI、输入校验和契约序列化；不直接执行长评测任务。
 - `backend/domain/`：数据集版本、指标输入输出、运行状态机与比较规则；不依赖 Web、数据库或队列框架。
-- `backend/adapters/`：目标 RAG HTTP 协议、评测模型和持久化实现。用接口隔离不同供应商与部署形态。
+- `backend/adapters/`：目标 RAG HTTP 协议、评测模型和持久化实现。用接口隔离不同供应商。
 - `backend/worker/`：样本调度、限流、重试、取消和结果落库。队列实现可替换；初版选成熟组件，避免自制任务系统。
 - `contracts/`：OpenAPI 和可共享的示例请求、响应；前端类型由契约生成。
 
