@@ -1,0 +1,88 @@
+:root {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1d2527;
+  background: #f5f7f7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button { font: inherit; }
+a { color: inherit; }
+
+.app-shell { display: flex; min-height: 100vh; }
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 232px;
+  flex: 0 0 232px;
+  padding: 25px 16px 20px;
+  background: #1b2828;
+  color: #e7efed;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 12px; font-size: 18px; font-weight: 700; }
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  background: #36a493;
+  color: #102421;
+  font-size: 20px;
+}
+.sidebar nav { margin-top: 44px; }
+.nav-item { display: flex; align-items: center; gap: 11px; min-height: 40px; padding: 0 12px; border-radius: 5px; font-size: 13px; }
+.nav-active { background: #334543; color: #fff; }
+.sidebar-foot { margin-top: auto; padding: 0 12px; color: #a8b9b5; font-size: 12px; }
+
+.main-content { width: 100%; max-width: 1180px; padding: 42px clamp(24px, 5vw, 72px); }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 30px; border-bottom: 1px solid #dce3e2; }
+.eyebrow { margin: 0 0 9px; color: #548479; font-size: 11px; font-weight: 700; }
+h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
+.refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: 1px solid #cbd7d4;
+  border-radius: 5px;
+  background: #fff;
+  color: #365a54;
+  cursor: pointer;
+}
+.refresh-button:hover { background: #e9f2f0; }
+.refresh-button:focus-visible, .api-link:focus-visible { outline: 2px solid #147f71; outline-offset: 3px; }
+.status-section { margin-top: 35px; }
+.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.section-heading h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.section-heading span { color: #687875; font-size: 12px; }
+.status-list { border: 1px solid #dce3e2; border-radius: 6px; background: #fff; overflow: hidden; }
+.status-item { display: flex; align-items: center; gap: 17px; min-height: 77px; padding: 14px 21px; }
+.status-item + .status-item { border-top: 1px solid #e9edec; }
+.status-icon { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: 0 0 38px; border-radius: 5px; background: #e7f0ed; color: #307466; }
+.status-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.status-copy strong { font-size: 13px; font-weight: 650; }
+.status-copy span { color: #6e7b79; font-size: 12px; }
+.status-label { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.status-online { color: #197f59; }
+.status-offline { color: #a9493b; }
+.status-checking { color: #94713c; }
+.api-link { display: inline-flex; align-items: center; gap: 5px; margin-top: 19px; color: #286b61; font-size: 12px; font-weight: 600; text-decoration: none; }
+.api-link:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .app-shell { display: block; }
+  .sidebar { width: 100%; min-height: 62px; flex-direction: row; align-items: center; padding: 12px 20px; }
+  .sidebar nav { margin: 0 0 0 auto; }
+  .nav-item { min-height: 34px; }
+  .sidebar-foot { display: none; }
+  .main-content { padding: 30px 20px; }
+  .status-item { gap: 12px; padding: 14px; }
+  .status-copy span { overflow-wrap: anywhere; }
+}

@@ -2,6 +2,8 @@
 
 状态：架构草案。采用前后端分离的单仓库，一套 Python 后端和一个 React 前端通过版本化 HTTP API 通信。首版面向本机单人使用；API 进程与 Worker 使用同一套 Python 后端代码，分别承担交互请求和异步评测任务。
 
+US-001 已落地的运行基座：`backend/api/` 与 `backend/worker/` 是两个独立进程；Worker 监督 Huey SQLite consumer，并把心跳写入本机数据目录的 `health.sqlite3`。管理 API 的 `/api/v1/health/live` 只检查自身，`/api/v1/health/ready` 根据 Worker 进程及心跳是否新鲜返回 200 或 503。心跳库与任务队列分离，当前不承载业务数据。前端由 Vite 独立服务，开发代理访问管理 API；契约快照为 `contracts/openapi.json`，前端类型由它生成。
+
 ```text
 React + TypeScript
     |
