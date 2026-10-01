@@ -1,4 +1,5 @@
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -16,19 +17,22 @@ def running(command: list[str], environment: dict[str, str]) -> Iterator[subproc
         command,
         env=environment,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
         text=True,
     )
     try:
         yield process
     finally:
-        if process.poll() is None:
-            process.terminate()
         try:
-            process.communicate(timeout=5)
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            process.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            process.kill()
-            process.communicate()
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
 
 
 def free_port() -> int:
