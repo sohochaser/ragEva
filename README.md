@@ -7,4 +7,4 @@
 - [开发与验收流程](docs/workflow.md)
 - [任务拆解](docs/plan.md)
 
-MVP 需求基线见 `docs/requirements.md`；后续实现按其中的验收场景推进。
+MVP 需求草案见 `docs/requirements.md`；chunk 标注规则确认后按其中的验收场景推进。
