@@ -1,6 +1,6 @@
 # ragEva
 
-RAG 评测系统。当前阶段：需求与架构草案，尚未开始产品代码实现。
+本机单人使用的 RAG 评测系统：一套 Python 后端、React 前端；支持调用现有 RAG HTTP API 或导入已有预测结果。当前阶段：需求与架构草案，尚未开始产品代码实现。
 
 - [产品需求](docs/requirements.md)
 - [系统架构](docs/architecture.md)
