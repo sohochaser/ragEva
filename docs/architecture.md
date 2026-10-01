@@ -33,13 +33,17 @@ Python API (FastAPI)
 
 ## 核心实体
 
-`Dataset`、`DatasetVersion`、`EvaluationCase`、`TargetConfig`、`PredictionBatch`、`Prediction`、`MetricConfig`、`EvaluationRun`、`CaseResult`、`MetricResult`。运行保存数据集版本、输入模式和目标配置或预测结果批次快照、指标配置与版本、评测模型标识、开始/结束时间和状态；逐样本保留答案、检索片段引用、耗时、评分、错误与证据。密钥只保存受保护的引用，不进入导出文件。
+`Dataset`、`DatasetVersion`、`EvaluationCase`、`TargetConfig`、`PredictionBatch`、`Prediction`、`MetricConfig`、`EvaluationRun`、`CaseResult`、`MetricResult`。运行保存数据集版本、输入模式和目标配置或预测结果批次快照、指标配置与版本、评测模型地址、名称和非敏感参数、开始/结束时间和状态；逐样本保留答案、检索片段引用、耗时、评分、错误与证据。密钥只保存受保护的引用，不进入导出文件。
+
+规范化样本至少包含 `case_id`、`question`、`reference_answer`、`relevant_document_ids`。规范化预测包含 `case_id`、`answer`、按检索顺序排列的 `contexts`；每个片段包含正文和 `document_id`，可附带片段 ID、来源及耗时。HTTP 与文件适配器都输出这一结构。检索指标按 `document_id` 去重并保留首次出现的排序位置。
 
 ## 运行状态与一致性
 
 运行状态为 `queued -> running -> completed | failed | cancelled`。每个样本有独立状态；重复投递以运行 ID + 样本 ID 幂等写入。仅成功完成的样本计入相应指标聚合，报告必须同时显示有效样本数、失败数和不适用数。比较两个运行时，以稳定样本 ID 对齐，配置差异显式展示。
 
 ## API 草案
+
+被测 RAG 服务的首版通用契约为 `POST {target_url}`，请求 JSON 为 `{"case_id": "...", "question": "..."}`，响应 JSON 为 `{"answer": "...", "contexts": [{"document_id": "...", "text": "...", "chunk_id": "...", "source": "..."}]}`。`contexts` 顺序即检索排序；`document_id` 与 `text` 必填，`chunk_id`、`source` 可选。连接测试校验该契约，调用耗时由评测系统测量。后续真实系统协议通过适配器转换到规范化预测模型。
 
 - `POST /api/v1/datasets/import`，`GET /api/v1/datasets/{id}/versions`
 - `POST /api/v1/targets`，`POST /api/v1/targets/{id}/test`
@@ -51,4 +55,4 @@ Python API (FastAPI)
 
 ## 技术取舍
 
-首版使用 SQLite 保存本机数据，并使用 Huey 的 SQLite 队列驱动独立 Python Worker，无需单独运行 PostgreSQL 或 Redis。用户数据保存在可配置的本机目录，默认仅绑定 `127.0.0.1`。Ragas 等现有评测库承接 LLM 指标，并在本项目适配层固定指标版本与提示词。检索排序指标按明确定义实现并使用边界测试。所有外部模型调用都可替换为测试桩，以便 CI 不依赖付费服务。
+首版使用 SQLite 保存本机数据，并使用 Huey 的 SQLite 队列驱动独立 Python Worker，无需单独运行 PostgreSQL 或 Redis。用户数据保存在可配置的本机目录，默认仅绑定 `127.0.0.1`。评测模型适配器调用用户配置的 OpenAI 兼容 API 地址、模型名与凭据；Ragas 等现有评测库承接 LLM 指标，并在本项目适配层固定指标版本与提示词。检索排序指标按明确定义实现并使用边界测试。所有外部模型调用都可替换为测试桩，以便 CI 不依赖付费服务。
