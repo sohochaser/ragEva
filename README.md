@@ -6,5 +6,6 @@
 - [系统架构](docs/architecture.md)
 - [开发与验收流程](docs/workflow.md)
 - [任务拆解](docs/plan.md)
+- [编号用户故事与验收清单](docs/stories.md)
 
 MVP 需求草案见 `docs/requirements.md`；检索采用一对一 chunk 语义匹配，并按其中的验收场景推进。
