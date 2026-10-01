@@ -35,7 +35,9 @@ Python API (FastAPI)
 
 `Dataset`、`DatasetVersion`、`EvaluationCase`、`TargetConfig`、`PredictionBatch`、`Prediction`、`MetricConfig`、`EvaluationScenario`、`EvaluationRun`、`ChunkMatchDecision`、`CaseResult`、`MetricResult`。HTTP 调用和文件导入都生成不可变 `PredictionBatch`，评分运行引用该批次。一个场景包含三项回答指标可编辑的评价标准；系统提示词结构和输出格式由代码版本控制。运行选择一个场景，并保存数据集版本、预测批次及来源快照、指标配置与版本、场景标准及系统提示词版本快照、回答模型和独立向量模型的地址、名称及非敏感参数、相似度阈值、开始/结束时间和状态。逐样本保留答案、检索片段引用、耗时、评分、错误与证据。`ChunkMatchDecision` 保存参考与预测 chunk、余弦相似度、阈值和匹配判定，供复评与审查复用。密钥只保存受保护的引用，不进入导出文件。
 
-规范化样本有 `case_id` 和 `question`。端到端答案样本携带 `reference_answer`；检索样本携带有序 `reference_chunks`；同一题可以同时带两类标注，也可只带其中一种。每个参考 chunk 记录正文和所属 `document_id`，列表位置即从高到低的参考相关性顺序；不要求共享 chunk ID 或数值相关性分数。规范化预测包含 `case_id`，以及按评测类型提供的 `answer` 和按预测检索顺序排列的 `contexts`；检索评测必须有 `contexts`，答案评测必须有 `answer`，需要计算忠实度时还必须有 `contexts`。每个预测 chunk 包含正文和 `document_id`，可附带片段 ID、来源及耗时。HTTP 与文件适配器都输出这一结构。检索匹配先用文档 ID 限定候选，再判断对问题的关键证据是否由预测 chunk 保留；文档 ID 相同不能直接算命中。
+规范化样本有 `case_id` 和 `question`。端到端答案样本携带 `reference_answer`；检索样本携带有序 `reference_chunks`；同一题可以同时带两类标注，也可只带其中一种。每个参考 chunk 记录正文和所属 `document_id`，列表位置即从高到低的参考相关性顺序；不要求共享 chunk ID 或数值相关性分数。规范化预测包含 `case_id`，以及按评测类型提供的 `answer` 和按预测检索顺序排列的 `contexts`；检索评测必须有 `contexts`，答案评测必须有 `answer`，需要计算忠实度时还必须有 `contexts`。每个预测 chunk 包含正文和 `document_id`，可附带片段 ID、来源及耗时。HTTP 与文件适配器都输出这一结构。检索匹配先用文档 ID 限定候选，再用同一模型的余弦相似度和阈值建立候选边；文档 ID 相同不能直接算命中。
+
+检索评分器对 K=10、20 分别取预测 Top-K，在候选二部图上计算最大命中数的一对一匹配。多解时依预测位置、参考相关性顺序、相似度、输入位置稳定决议；正文规范化后完全相同的重复预测项只有首次出现者可参与匹配。`ChunkMatchDecision` 按 K 记录候选边、阈值、选中配对与排除原因。匹配和增益规则版本写入运行快照，避免重新评分改变旧结果。参考位置 r 在总数 m 中使用线性增益 `m-r+1`，按预测位置对数折损计算 NDCG；指标公式与边界验收见 `requirements.md`。
 
 ## 运行状态与一致性
 

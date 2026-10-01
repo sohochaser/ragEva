@@ -7,4 +7,4 @@
 - [开发与验收流程](docs/workflow.md)
 - [任务拆解](docs/plan.md)
 
-MVP 需求草案见 `docs/requirements.md`；合并 chunk 的计分规则确认后按其中的验收场景推进。
+MVP 需求草案见 `docs/requirements.md`；检索采用一对一 chunk 语义匹配，并按其中的验收场景推进。
