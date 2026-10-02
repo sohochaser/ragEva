@@ -51,6 +51,7 @@ class RunSummary(BaseModel):
     dataset_version: int
     status: str
     config: dict[str, Any]
+    estimated_external_calls: int
     model_id: str | None
     aggregate: "RunAggregate | None"
     cancel_requested: bool

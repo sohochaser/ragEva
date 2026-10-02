@@ -416,6 +416,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/target-jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Job */
+        post: operations["cancel_job_api_v1_target_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/target-jobs/{job_id}/cases": {
         parameters: {
             query?: never;
@@ -982,6 +999,8 @@ export interface components {
             dataset_id: string;
             /** Dataset Version */
             dataset_version: number;
+            /** Estimated External Calls */
+            estimated_external_calls: number;
             /** Failed Count */
             failed_count: number;
             /** Finished At */
@@ -1089,6 +1108,11 @@ export interface components {
         TargetCreate: {
             /** Bearer Token */
             bearer_token?: string | null;
+            /**
+             * Max Concurrency
+             * @default 4
+             */
+            max_concurrency: number;
             /** Name */
             name: string;
             /**
@@ -1148,12 +1172,18 @@ export interface components {
         TargetJobSummary: {
             /** Batch Id */
             batch_id: string | null;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /** Cancelled Count */
+            cancelled_count: number;
             /** Created At */
             created_at: string;
             /** Dataset Id */
             dataset_id: string;
             /** Dataset Version */
             dataset_version: number;
+            /** Estimated External Calls */
+            estimated_external_calls: number;
             /**
              * Evaluation Type
              * @enum {string}
@@ -1186,6 +1216,8 @@ export interface components {
             has_token: boolean;
             /** Id */
             id: string;
+            /** Max Concurrency */
+            max_concurrency: number;
             /** Name */
             name: string;
             /**
@@ -2080,6 +2112,37 @@ export interface operations {
         };
     };
     get_job_api_v1_target_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetJobSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_job_api_v1_target_jobs__job_id__cancel_post: {
         parameters: {
             query?: never;
             header?: never;

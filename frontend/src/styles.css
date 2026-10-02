@@ -241,6 +241,7 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .target-job-row span { color: #6a7b77; font-size: 11px; }
 .target-job-detail { padding: 19px 21px; border: 1px solid #dce3e2; background: #fff; }
 .target-job-detail p, .target-job-detail code { overflow-wrap: anywhere; font-size: 12px; }
+.target-job-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 5px 0 13px; color: #62746e; font-size: 12px; }
 .target-job-case { display: grid; grid-template-columns: minmax(80px, 1fr) 80px minmax(100px, 1fr) 85px; gap: 12px; padding: 10px 0; border-top: 1px solid #edf1ef; font-size: 12px; }
 .target-job-case span { overflow-wrap: anywhere; }
 .target-job-case small { color: #6a7b77; }

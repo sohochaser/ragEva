@@ -40,6 +40,12 @@ export async function fetchTargetJob(id: string): Promise<TargetJob> {
   return readJson<TargetJob>(await fetch(`/api/v1/target-jobs/${encodeURIComponent(id)}`))
 }
 
+export async function cancelTargetJob(id: string): Promise<TargetJob> {
+  return readJson<TargetJob>(await fetch(`/api/v1/target-jobs/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST',
+  }))
+}
+
 export async function fetchTargetJobCases(id: string): Promise<TargetJobCase[]> {
   return readJson<TargetJobCase[]>(await fetch(`/api/v1/target-jobs/${encodeURIComponent(id)}/cases`))
 }

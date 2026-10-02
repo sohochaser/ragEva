@@ -160,6 +160,24 @@ class RunStore(PredictionStore):
             ).rowcount
         return changed == 1
 
+    def requeue_unfinished(self) -> list[str]:
+        with closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "UPDATE evaluation_runs SET status = 'queued', started_at = NULL "
+                "WHERE status = 'running' AND cancel_requested = 0"
+            )
+            cancelled = connection.execute(
+                "SELECT id FROM evaluation_runs WHERE status = 'running' AND cancel_requested = 1"
+            ).fetchall()
+            rows = connection.execute(
+                "SELECT id FROM evaluation_runs WHERE status = 'queued' "
+                "AND cancel_requested = 0 ORDER BY created_at"
+            ).fetchall()
+        for row in cancelled:
+            self.finish(row["id"])
+        return [row["id"] for row in rows]
+
     def config(self, run_id: str) -> dict[str, Any]:
         with closing(self._connect()) as connection:
             row = connection.execute(
@@ -276,6 +294,14 @@ class RunStore(PredictionStore):
                     result["criteria"],
                 ),
             )
+
+    def answer_metric_statuses(self, run_id: str, case_id: str) -> dict[str, str]:
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT metric, status FROM run_answer_metrics WHERE run_id = ? AND case_id = ?",
+                (run_id, case_id),
+            ).fetchall()
+        return {row["metric"]: row["status"] for row in rows}
 
     def fail_pending(self, run_id: str, error: str) -> None:
         with closing(self._connect()) as connection, connection:
@@ -420,6 +446,21 @@ class RunStore(PredictionStore):
                 "SELECT status, COUNT(*) AS count FROM run_cases WHERE run_id = ? GROUP BY status",
                 (run_id,),
             ).fetchall()
+            config = json.loads(row["config_json"])
+            estimated_calls = 0
+            if config.get("mode") in {"answer", "both"}:
+                estimated_calls = connection.execute(
+                    "SELECT COALESCE(SUM((p.answer IS NOT NULL) + "
+                    "(p.answer IS NOT NULL AND p.contexts_json IS NOT NULL) + "
+                    "(p.answer IS NOT NULL AND c.reference_answer IS NOT NULL)), 0) "
+                    "FROM run_cases rc JOIN evaluation_runs r ON r.id = rc.run_id "
+                    "JOIN prediction_batches b ON b.id = r.batch_id "
+                    "JOIN evaluation_cases c ON c.version_id = b.dataset_version_id "
+                    "AND c.case_id = rc.case_id "
+                    "LEFT JOIN predictions p ON p.batch_id = b.id AND p.case_id = rc.case_id "
+                    "WHERE rc.run_id = ?",
+                    (run_id,),
+                ).fetchone()[0]
         by_status = {item["status"]: item["count"] for item in counts}
         total = sum(by_status.values())
         return {
@@ -437,7 +478,8 @@ class RunStore(PredictionStore):
                     "finished_at",
                 )
             },
-            "config": json.loads(row["config_json"]),
+            "config": config,
+            "estimated_external_calls": estimated_calls,
             "aggregate": json.loads(row["aggregate_json"]) if row["aggregate_json"] else None,
             "cancel_requested": bool(row["cancel_requested"]),
             "total_count": total,

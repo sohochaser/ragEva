@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS http_target_protocols (
     target_id TEXT PRIMARY KEY REFERENCES http_targets(id),
     protocol TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS http_target_limits (
+    target_id TEXT PRIMARY KEY REFERENCES http_targets(id),
+    max_concurrency INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS target_jobs (
     id TEXT PRIMARY KEY,
     target_id TEXT NOT NULL REFERENCES http_targets(id),
@@ -50,6 +54,10 @@ CREATE TABLE IF NOT EXISTS target_job_cases (
     usage_json TEXT,
     elapsed_ms REAL,
     PRIMARY KEY(job_id, case_id)
+);
+CREATE TABLE IF NOT EXISTS target_job_cancellations (
+    job_id TEXT PRIMARY KEY REFERENCES target_jobs(id),
+    requested_at TEXT NOT NULL
 );
 """
 
@@ -84,6 +92,7 @@ class TargetStore(PredictionStore):
         timeout_seconds: float,
         retries: int,
         protocol: str = "json",
+        max_concurrency: int = 4,
     ) -> dict[str, Any]:
         target_id = str(uuid4())
         secret_path = self.secret_dir / target_id
@@ -104,6 +113,10 @@ class TargetStore(PredictionStore):
                     "INSERT INTO http_target_protocols (target_id, protocol) VALUES (?, ?)",
                     (target_id, protocol),
                 )
+                connection.execute(
+                    "INSERT INTO http_target_limits (target_id, max_concurrency) VALUES (?, ?)",
+                    (target_id, max_concurrency),
+                )
         except Exception:
             secret_path.unlink(missing_ok=True)
             raise
@@ -112,8 +125,10 @@ class TargetStore(PredictionStore):
     def get_target(self, target_id: str) -> dict[str, Any]:
         with closing(self._connect()) as connection:
             row = connection.execute(
-                "SELECT t.*, COALESCE(p.protocol, 'json') AS protocol FROM http_targets t "
-                "LEFT JOIN http_target_protocols p ON p.target_id = t.id WHERE t.id = ?",
+                "SELECT t.*, COALESCE(p.protocol, 'json') AS protocol, "
+                "COALESCE(l.max_concurrency, 4) AS max_concurrency FROM http_targets t "
+                "LEFT JOIN http_target_protocols p ON p.target_id = t.id "
+                "LEFT JOIN http_target_limits l ON l.target_id = t.id WHERE t.id = ?",
                 (target_id,),
             ).fetchone()
         if row is None:
@@ -181,6 +196,15 @@ class TargetStore(PredictionStore):
                 "GROUP BY status",
                 (job_id,),
             ).fetchall()
+            cancel_requested = (
+                connection.execute(
+                    "SELECT 1 FROM target_job_cancellations WHERE job_id = ?", (job_id,)
+                ).fetchone()
+                is not None
+            )
+            target = connection.execute(
+                "SELECT retries FROM http_targets WHERE id = ?", (row["target_id"],)
+            ).fetchone()
         by_status = {item["status"]: item["count"] for item in counts}
         total = sum(by_status.values())
         return {
@@ -189,6 +213,9 @@ class TargetStore(PredictionStore):
             "processed_count": total - by_status.get("pending", 0),
             "success_count": by_status.get("success", 0),
             "failed_count": by_status.get("failed", 0),
+            "cancelled_count": by_status.get("cancelled", 0),
+            "cancel_requested": cancel_requested,
+            "estimated_external_calls": total * (int(target["retries"]) + 1),
         }
 
     def list_jobs(self) -> list[dict[str, Any]]:
@@ -203,10 +230,65 @@ class TargetStore(PredictionStore):
             connection.execute("BEGIN IMMEDIATE")
             changed = connection.execute(
                 "UPDATE target_jobs SET status = 'running', started_at = ? "
-                "WHERE id = ? AND status = 'queued'",
-                (_now(), job_id),
+                "WHERE id = ? AND status = 'queued' AND NOT EXISTS "
+                "(SELECT 1 FROM target_job_cancellations WHERE job_id = ?)",
+                (_now(), job_id, job_id),
             ).rowcount
         return changed == 1
+
+    def requeue_unfinished(self) -> list[str]:
+        with closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "UPDATE target_jobs SET status = 'queued', started_at = NULL "
+                "WHERE status = 'running' AND id NOT IN "
+                "(SELECT job_id FROM target_job_cancellations)"
+            )
+            cancelled_running = connection.execute(
+                "SELECT j.id FROM target_jobs j JOIN target_job_cancellations c "
+                "ON c.job_id = j.id WHERE j.status = 'running'"
+            ).fetchall()
+            rows = connection.execute(
+                "SELECT id FROM target_jobs WHERE status = 'queued' ORDER BY created_at"
+            ).fetchall()
+        for row in cancelled_running:
+            self.finish_job(row["id"])
+        return [row["id"] for row in rows]
+
+    def cancellation_requested(self, job_id: str) -> bool:
+        with closing(self._connect()) as connection:
+            return (
+                connection.execute(
+                    "SELECT 1 FROM target_job_cancellations WHERE job_id = ?", (job_id,)
+                ).fetchone()
+                is not None
+            )
+
+    def cancel_job(self, job_id: str) -> dict[str, Any]:
+        with closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT status FROM target_jobs WHERE id = ?", (job_id,)
+            ).fetchone()
+            if row is None:
+                raise TargetJobNotFound(job_id)
+            if row["status"] in {"queued", "running"}:
+                connection.execute(
+                    "INSERT OR IGNORE INTO target_job_cancellations (job_id, requested_at) "
+                    "VALUES (?, ?)",
+                    (job_id, _now()),
+                )
+                if row["status"] == "queued":
+                    connection.execute(
+                        "UPDATE target_job_cases SET status = 'cancelled', attempts_json = '[]' "
+                        "WHERE job_id = ? AND status = 'pending'",
+                        (job_id,),
+                    )
+                    connection.execute(
+                        "UPDATE target_jobs SET status = 'cancelled', finished_at = ? WHERE id = ?",
+                        (_now(), job_id),
+                    )
+        return self.get_job(job_id)
 
     def pending_cases(self, job_id: str) -> list[tuple[str, str]]:
         with closing(self._connect()) as connection:
@@ -226,7 +308,8 @@ class TargetStore(PredictionStore):
             connection.execute(
                 "UPDATE target_job_cases SET status = ?, prediction_json = ?, error = ?, "
                 "attempts_json = ?, usage_json = ?, elapsed_ms = ? "
-                "WHERE job_id = ? AND case_id = ? AND status = 'pending'",
+                "WHERE job_id = ? AND case_id = ? AND status = 'pending' "
+                "AND NOT EXISTS (SELECT 1 FROM target_job_cancellations WHERE job_id = ?)",
                 (
                     "success" if result.prediction else "failed",
                     json.dumps(asdict(result.prediction), ensure_ascii=False)
@@ -238,6 +321,7 @@ class TargetStore(PredictionStore):
                     sum(item.elapsed_ms for item in result.attempts),
                     job_id,
                     case_id,
+                    job_id,
                 ),
             )
 
@@ -263,11 +347,24 @@ class TargetStore(PredictionStore):
                 raise TargetJobNotFound(job_id)
             if job["status"] != "running":
                 return self.get_job(job_id)
-            connection.execute(
-                "UPDATE target_job_cases SET status = 'failed', error = 'incomplete_worker', "
-                "attempts_json = '[]' WHERE job_id = ? AND status = 'pending'",
-                (job_id,),
+            cancelled = (
+                connection.execute(
+                    "SELECT 1 FROM target_job_cancellations WHERE job_id = ?", (job_id,)
+                ).fetchone()
+                is not None
             )
+            if cancelled:
+                connection.execute(
+                    "UPDATE target_job_cases SET status = 'cancelled', attempts_json = '[]' "
+                    "WHERE job_id = ? AND status = 'pending'",
+                    (job_id,),
+                )
+            else:
+                connection.execute(
+                    "UPDATE target_job_cases SET status = 'failed', error = 'incomplete_worker', "
+                    "attempts_json = '[]' WHERE job_id = ? AND status = 'pending'",
+                    (job_id,),
+                )
             rows = connection.execute(
                 "SELECT position, case_id, status, prediction_json, error, attempts_json, "
                 "usage_json, elapsed_ms FROM target_job_cases WHERE job_id = ? ORDER BY position",
@@ -323,7 +420,16 @@ class TargetStore(PredictionStore):
                 )
             connection.execute(
                 "UPDATE target_jobs SET status = ?, batch_id = ?, finished_at = ? WHERE id = ?",
-                ("completed" if successes == len(rows) else "failed", batch_id, _now(), job_id),
+                (
+                    "cancelled"
+                    if cancelled
+                    else "completed"
+                    if successes == len(rows)
+                    else "failed",
+                    batch_id,
+                    _now(),
+                    job_id,
+                ),
             )
         return self.get_job(job_id)
 

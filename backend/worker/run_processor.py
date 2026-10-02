@@ -57,7 +57,13 @@ def _score_answer_case(
         tuple(chunk["text"] for chunk in item["contexts"]) if item["contexts"] else None,
     )
     statuses: list[str] = []
+    existing = store.answer_metric_statuses(run_id, case_id)
     for metric in ANSWER_METRICS:
+        if store.cancellation_requested(run_id):
+            break
+        if metric in existing:
+            statuses.append(existing[metric])
+            continue
         result: dict[str, Any] = {
             "status": "not_applicable",
             "score": None,

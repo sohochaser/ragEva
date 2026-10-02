@@ -23,6 +23,7 @@ class TargetCreate(BaseModel):
     bearer_token: SecretStr | None = None
     timeout_seconds: float = Field(default=30, gt=0, le=120)
     retries: int = Field(default=1, ge=0, le=3)
+    max_concurrency: int = Field(default=4, ge=1, le=8)
     protocol: Literal["json", "sse"] = "json"
 
     @field_validator("name")
@@ -56,6 +57,7 @@ class TargetSummary(BaseModel):
     has_token: bool
     timeout_seconds: float
     retries: int
+    max_concurrency: int
     protocol: Literal["json", "sse"]
     created_at: str
 
@@ -94,6 +96,9 @@ class TargetJobSummary(BaseModel):
     processed_count: int
     success_count: int
     failed_count: int
+    cancelled_count: int
+    cancel_requested: bool
+    estimated_external_calls: int
     created_at: str
     started_at: str | None
     finished_at: str | None
@@ -121,6 +126,7 @@ def create_target_router(settings: Settings) -> APIRouter:
             request.timeout_seconds,
             request.retries,
             request.protocol,
+            request.max_concurrency,
         )
 
     @router.get("", response_model=list[TargetSummary])
@@ -190,6 +196,13 @@ def create_target_job_router(settings: Settings) -> APIRouter:
     def get_job(job_id: str) -> dict[str, Any]:
         try:
             return store.get_job(job_id)
+        except TargetJobNotFound as exc:
+            raise HTTPException(status_code=404, detail="采集任务不存在") from exc
+
+    @router.post("/{job_id}/cancel", response_model=TargetJobSummary)
+    def cancel_job(job_id: str) -> dict[str, Any]:
+        try:
+            return store.cancel_job(job_id)
         except TargetJobNotFound as exc:
             raise HTTPException(status_code=404, detail="采集任务不存在") from exc
 

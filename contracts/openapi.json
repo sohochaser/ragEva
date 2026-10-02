@@ -1574,6 +1574,10 @@
             "title": "Dataset Version",
             "type": "integer"
           },
+          "estimated_external_calls": {
+            "title": "Estimated External Calls",
+            "type": "integer"
+          },
           "failed_count": {
             "title": "Failed Count",
             "type": "integer"
@@ -1647,6 +1651,7 @@
           "dataset_version",
           "status",
           "config",
+          "estimated_external_calls",
           "model_id",
           "aggregate",
           "cancel_requested",
@@ -1915,6 +1920,13 @@
             ],
             "title": "Bearer Token"
           },
+          "max_concurrency": {
+            "default": 4,
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
           "name": {
             "maxLength": 120,
             "minLength": 1,
@@ -2079,6 +2091,14 @@
             ],
             "title": "Batch Id"
           },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "cancelled_count": {
+            "title": "Cancelled Count",
+            "type": "integer"
+          },
           "created_at": {
             "title": "Created At",
             "type": "string"
@@ -2089,6 +2109,10 @@
           },
           "dataset_version": {
             "title": "Dataset Version",
+            "type": "integer"
+          },
+          "estimated_external_calls": {
+            "title": "Estimated External Calls",
             "type": "integer"
           },
           "evaluation_type": {
@@ -2163,6 +2187,9 @@
           "processed_count",
           "success_count",
           "failed_count",
+          "cancelled_count",
+          "cancel_requested",
+          "estimated_external_calls",
           "created_at",
           "started_at",
           "finished_at"
@@ -2183,6 +2210,10 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "max_concurrency": {
+            "title": "Max Concurrency",
+            "type": "integer"
           },
           "name": {
             "title": "Name",
@@ -2216,6 +2247,7 @@
           "has_token",
           "timeout_seconds",
           "retries",
+          "max_concurrency",
           "protocol",
           "created_at"
         ],
@@ -3659,6 +3691,48 @@
           }
         },
         "summary": "Get Job",
+        "tags": [
+          "target-jobs"
+        ]
+      }
+    },
+    "/api/v1/target-jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_job_api_v1_target_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetJobSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Job",
         "tags": [
           "target-jobs"
         ]

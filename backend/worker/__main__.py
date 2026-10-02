@@ -6,9 +6,25 @@ import signal
 import subprocess
 import sys
 import threading
+from collections.abc import Callable
+from pathlib import Path
 
+from backend.adapters.run_store import RunStore
+from backend.adapters.target_store import TargetStore
 from backend.config import Settings
-from backend.health import clear_worker_heartbeat, write_worker_heartbeat
+from backend.health import clear_worker_heartbeat, worker_is_ready, write_worker_heartbeat
+
+
+def recover_work(
+    data_dir: Path, submit_run: Callable[[str], object], submit_target: Callable[[str], object]
+) -> tuple[int, int]:
+    runs = RunStore(data_dir).requeue_unfinished()
+    targets = TargetStore(data_dir).requeue_unfinished()
+    for run_id in runs:
+        submit_run(run_id)
+    for job_id in targets:
+        submit_target(job_id)
+    return len(runs), len(targets)
 
 
 def main() -> int:
@@ -21,6 +37,13 @@ def main() -> int:
     if consumer_command is None:
         print("huey_consumer is missing; run make setup", file=sys.stderr)
         return 2
+    if worker_is_ready(settings.data_dir, settings.worker_stale_after):
+        print("Another Worker is already running", file=sys.stderr)
+        return 2
+
+    from backend.worker.queue import collect_target_task, score_run_task
+
+    recover_work(settings.data_dir, score_run_task, collect_target_task)
 
     stop = threading.Event()
 
