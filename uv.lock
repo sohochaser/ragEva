@@ -1496,6 +1496,7 @@ dependencies = [
     { name = "pypdf" },
     { name = "python-docx" },
     { name = "python-multipart" },
+    { name = "tokenizers" },
     { name = "uvicorn" },
 ]
 
@@ -1516,6 +1517,7 @@ requires-dist = [
     { name = "pypdf", specifier = ">=6,<7" },
     { name = "python-docx", specifier = ">=1.2,<2" },
     { name = "python-multipart", specifier = ">=0.0.20,<1" },
+    { name = "tokenizers", specifier = ">=0.20,<1" },
     { name = "uvicorn", specifier = ">=0.30,<1" },
 ]
 

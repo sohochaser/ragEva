@@ -12,8 +12,11 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
 from backend.adapters.run_store import RunInputError, RunNotFound, RunStore
 from backend.adapters.scenario_store import ScenarioNotFound, ScenarioStore
+from backend.adapters.target_store import TargetStore
+from backend.adapters.usage_store import UsageStore, summarize_calls
 from backend.api.matching import ChunkInput, KScoreResponse
 from backend.api.predictions import PredictedChunkResponse
+from backend.api.usage import UsageSummary
 from backend.config import Settings
 from backend.domain.runs import CaseStatus, MetricKey
 from backend.health import worker_is_ready
@@ -149,6 +152,8 @@ def create_run_router(settings: Settings) -> APIRouter:
     store = RunStore(settings.data_dir)
     scenarios = ScenarioStore(settings.data_dir)
     models = OnlineModelStore(settings.data_dir)
+    usages = UsageStore(settings.data_dir)
+    targets = TargetStore(settings.data_dir)
 
     def start_run(request: RunCreate, source_run_id: str | None = None) -> dict[str, Any]:
         if not worker_is_ready(settings.data_dir, settings.worker_stale_after):
@@ -262,6 +267,19 @@ def create_run_router(settings: Settings) -> APIRouter:
             return store.get_cases(run_id, offset, limit, status)
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="评测运行不存在") from exc
+
+    @router.get("/{run_id}/usage", response_model=UsageSummary)
+    def get_usage(run_id: str) -> dict[str, Any]:
+        try:
+            run = store.get_run(run_id)
+        except RunNotFound as exc:
+            raise HTTPException(status_code=404, detail="评测运行不存在") from exc
+        calls = usages.for_owner("run", run_id)["calls"]
+        target_job_id = targets.job_for_batch(run["prediction_batch_id"])
+        if target_job_id:
+            calls.extend(usages.for_owner("target_job", target_job_id)["calls"])
+            calls.sort(key=lambda item: (item["created_at"], item["id"]))
+        return summarize_calls(calls)
 
     @router.get("/{run_id}/export")
     def export(

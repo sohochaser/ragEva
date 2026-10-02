@@ -152,6 +152,11 @@ def test_answer_run_isolates_metrics_and_aggregates_only_valid_scores(
     assert cases[1]["answer_metrics"]["correctness"]["reason"] == "missing_reference_answer"
     assert "answer_metrics" in api.get(f"/api/v1/runs/{run_id}/export?format=csv").text
     assert len(seen) == 4
+    usage = api.get(f"/api/v1/runs/{run_id}/usage").json()
+    assert usage["call_count"] == 4
+    assert usage["totals"]["input"]["actual"] == {"calls": 4, "tokens": 44}
+    assert usage["totals"]["output"]["actual"] == {"calls": 4, "tokens": 12}
+    assert "secret" not in json.dumps(usage)
     process_run(
         run_id,
         tmp_path,
@@ -238,3 +243,9 @@ def test_combined_run_keeps_retrieval_not_applicable_count(tmp_path: Path) -> No
     assert cases[0]["score"] is not None
     assert cases[1]["score"] is None
     assert cases[1]["answer_metrics"]["relevance"]["score"] == 0.5
+    from backend.adapters.usage_store import UsageStore
+
+    usage = UsageStore(tmp_path).for_owner("run", run["id"])
+    assert usage["totals"]["input"]["estimated"]["calls"] >= 1
+    assert usage["totals"]["output"]["not_applicable"]["calls"] >= 1
+    assert any(call["operation"] == "embedding" for call in usage["calls"])

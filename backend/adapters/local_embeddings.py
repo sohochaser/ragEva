@@ -2,7 +2,7 @@
 
 import hashlib
 import sqlite3
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from contextlib import closing
 from pathlib import Path
 from typing import Protocol
@@ -77,7 +77,12 @@ class EmbeddingCache:
     def __init__(self, data_dir: Path) -> None:
         self.path = data_dir / "embeddings.sqlite3"
 
-    def vectors(self, encoder: Encoder, texts: Sequence[str]) -> dict[str, np.ndarray]:
+    def vectors(
+        self,
+        encoder: Encoder,
+        texts: Sequence[str],
+        on_call: Callable[[list[str]], None] | None = None,
+    ) -> dict[str, np.ndarray]:
         unique = list(dict.fromkeys(texts))
         if not unique:
             return {}
@@ -103,6 +108,9 @@ class EmbeddingCache:
                     vectors = list(encoder.embed(batch))
                 except Exception as exc:
                     raise ModelUnavailable(f"向量编码失败（{type(exc).__name__}）") from exc
+                finally:
+                    if on_call is not None:
+                        on_call(batch)
                 if len(vectors) != len(batch):
                     raise ModelUnavailable("向量模型返回数量与输入不一致")
                 for text, value in zip(batch, vectors, strict=True):

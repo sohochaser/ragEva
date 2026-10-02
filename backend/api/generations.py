@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 from backend.adapters.document_store import CollectionNotFound
 from backend.adapters.generation_store import GenerationNotFound, GenerationStore
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
+from backend.adapters.usage_store import UsageStore
+from backend.api.usage import UsageSummary
 from backend.config import Settings
 from backend.domain.generation import PROMPT_VERSION, multi_chunk_target
 from backend.health import worker_is_ready
@@ -75,6 +77,7 @@ def create_generation_router(settings: Settings) -> APIRouter:
     router = APIRouter(tags=["generations"])
     store = GenerationStore(settings.data_dir)
     models = OnlineModelStore(settings.data_dir)
+    usages = UsageStore(settings.data_dir)
 
     @router.post(
         "/api/v1/document-collections/{collection_id}/generations",
@@ -140,5 +143,13 @@ def create_generation_router(settings: Settings) -> APIRouter:
             return store.candidates(run_id)
         except GenerationNotFound as exc:
             raise HTTPException(status_code=404, detail="生成任务不存在") from exc
+
+    @router.get("/api/v1/generations/{run_id}/usage", response_model=UsageSummary)
+    def get_usage(run_id: str) -> dict[str, Any]:
+        try:
+            store.get(run_id)
+        except GenerationNotFound as exc:
+            raise HTTPException(status_code=404, detail="生成任务不存在") from exc
+        return usages.for_owner("generation", run_id)
 
     return router

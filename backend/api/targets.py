@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field, SecretStr, field_validator
 from backend.adapters.http_target import call_json_target
 from backend.adapters.sse_target import call_sse_target
 from backend.adapters.target_store import TargetJobNotFound, TargetNotFound, TargetStore
+from backend.adapters.usage_store import UsageStore
+from backend.api.usage import UsageSummary
 from backend.config import Settings
 from backend.domain.predictions import EvaluationType
 from backend.health import worker_is_ready
@@ -169,6 +171,7 @@ def create_target_router(settings: Settings) -> APIRouter:
 def create_target_job_router(settings: Settings) -> APIRouter:
     router = APIRouter(prefix="/api/v1/target-jobs", tags=["target-jobs"])
     store = TargetStore(settings.data_dir)
+    usages = UsageStore(settings.data_dir)
 
     @router.post("", status_code=202, response_model=TargetJobSummary)
     def create(request: TargetJobCreate) -> dict[str, Any]:
@@ -212,5 +215,13 @@ def create_target_job_router(settings: Settings) -> APIRouter:
             return store.job_cases(job_id)
         except TargetJobNotFound as exc:
             raise HTTPException(status_code=404, detail="采集任务不存在") from exc
+
+    @router.get("/{job_id}/usage", response_model=UsageSummary)
+    def job_usage(job_id: str) -> dict[str, Any]:
+        try:
+            store.get_job(job_id)
+        except TargetJobNotFound as exc:
+            raise HTTPException(status_code=404, detail="采集任务不存在") from exc
+        return usages.for_owner("target_job", job_id)
 
     return router

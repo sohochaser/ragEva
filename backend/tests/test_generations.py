@@ -143,6 +143,12 @@ def test_quota_sources_prompt_snapshot_and_candidates(
     assert max(item["sources"][0]["position"] for item in seen) >= 2
     assert peak <= 2
     assert "private-token" not in api.get("/api/v1/generations").text
+    usage = api.get(f"/api/v1/generations/{run_id}/usage").json()
+    assert usage["call_count"] == 3
+    assert usage["totals"]["input"]["actual"] == {"calls": 3, "tokens": 36}
+    assert usage["totals"]["output"]["actual"] == {"calls": 3, "tokens": 12}
+    assert all(call["model_id"] == "generator-v1" for call in usage["calls"])
+    assert "private-token" not in json.dumps(usage)
 
 
 def test_multi_chunk_shortage_preserves_single_candidates(
@@ -183,6 +189,11 @@ def test_multi_chunk_shortage_preserves_single_candidates(
     assert run["target_multi_count"] == 2
     assert run["shortfall_reasons"] == ["insufficient_source_chunks"]
     assert len(api.get(f"/api/v1/generations/{run_id}/candidates").json()) == 2
+    usage = api.get(f"/api/v1/generations/{run_id}/usage").json()
+    assert usage["call_count"] == 2
+    assert usage["totals"]["input"]["estimated"]["calls"] == 2
+    assert usage["totals"]["output"]["estimated"]["tokens"] > 0
+    assert all(call["tokenizer"] == "bytelevel-v1" for call in usage["calls"])
 
 
 def test_bad_model_output_stops_at_call_limit_and_keeps_errors(

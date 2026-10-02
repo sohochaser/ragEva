@@ -134,6 +134,11 @@ def test_target_secret_connection_test_and_json_collection(
     cases = api.get(f"/api/v1/target-jobs/{job_id}/cases").json()
     assert cases[0]["usage"] == {"input_tokens": 5, "output_tokens": 2}
     assert cases[1]["error"] == "http_401"
+    usage = api.get(f"/api/v1/target-jobs/{job_id}/usage").json()
+    assert usage["call_count"] == 2
+    assert usage["totals"]["input"]["actual"] == {"calls": 1, "tokens": 5}
+    assert usage["totals"]["output"]["actual"] == {"calls": 1, "tokens": 2}
+    assert usage["totals"]["input"]["unknown"]["calls"] == 1
     batch = api.get(f"/api/v1/predictions/{job['batch_id']}").json()
     assert batch["record_count"] == 1
     assert batch["matched_count"] == 1
@@ -146,6 +151,9 @@ def test_target_secret_connection_test_and_json_collection(
     run = RunStore(tmp_path).create_run(job["batch_id"], "fake", None, True, 0.8, ["map"])
     result = api.get(f"/api/v1/runs/{run['id']}/cases").json()
     assert result["cases"][1]["error"] == "http_401"
+    run_usage = api.get(f"/api/v1/runs/{run['id']}/usage").json()
+    assert run_usage["call_count"] == 2
+    assert {call["operation"] for call in run_usage["calls"]} == {"target_rag"}
 
 
 def test_collector_caps_simultaneous_http_requests(tmp_path: Path) -> None:
