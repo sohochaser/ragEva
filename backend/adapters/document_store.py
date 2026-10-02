@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from backend.domain.chunk_manifests import ManifestChunk
 from backend.domain.document_collections import SourceDocument
 
 SCHEMA = """
@@ -87,6 +88,41 @@ class DocumentStore:
                 )
         return self.get(collection_id)
 
+    def create_from_chunks(self, name: str, chunks: list[ManifestChunk]) -> dict[str, Any]:
+        if not chunks:
+            raise ValueError("chunk 清单不能为空")
+        collection_id = str(uuid4())
+        created_at = datetime.now(UTC).isoformat()
+        with closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT INTO document_collections VALUES (?, ?, ?, ?, ?, ?)",
+                (collection_id, name, "chunks_only", 0, 0, created_at),
+            )
+            document_pks: dict[str, str] = {}
+            for chunk in chunks:
+                document_pk = document_pks.get(chunk.document_id)
+                if document_pk is None:
+                    document_pk = str(uuid4())
+                    document_pks[chunk.document_id] = document_pk
+                    connection.execute(
+                        "INSERT INTO source_documents VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            document_pk,
+                            collection_id,
+                            len(document_pks) - 1,
+                            None,
+                            chunk.document_id,
+                            None,
+                            None,
+                        ),
+                    )
+                connection.execute(
+                    "INSERT INTO source_chunks VALUES (?, ?, ?)",
+                    (document_pk, chunk.position, chunk.text),
+                )
+        return self.get(collection_id)
+
     def list(self) -> list[dict[str, Any]]:
         with closing(self._connect()) as connection:
             rows = connection.execute(
@@ -112,6 +148,7 @@ class DocumentStore:
                 (collection_id,),
             ).fetchall()
             details = []
+            ordered_chunks = []
             for document in documents:
                 chunks = connection.execute(
                     "SELECT position, text FROM source_chunks "
@@ -124,7 +161,26 @@ class DocumentStore:
                         "document_id": document["document_id"],
                         "checksum": document["checksum"],
                         "byte_count": document["byte_count"],
+                        "has_original_file": document["filename"] is not None,
                         "chunks": [dict(chunk) for chunk in chunks],
                     }
                 )
-        return {**dict(row), "document_count": len(details), "documents": details}
+                for chunk in chunks:
+                    ordered_chunks.append(
+                        {
+                            "position": chunk["position"],
+                            "document_id": document["document_id"],
+                            "text": chunk["text"],
+                        }
+                    )
+        if row["source_kind"] == "chunks_only":
+            ordered_chunks.sort(key=lambda chunk: chunk["position"])
+        else:
+            for position, chunk in enumerate(ordered_chunks):
+                chunk["position"] = position
+        return {
+            **dict(row),
+            "document_count": len(details),
+            "documents": details,
+            "chunks": ordered_chunks,
+        }

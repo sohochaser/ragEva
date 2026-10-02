@@ -3,10 +3,17 @@ import type { components } from './schema'
 export type CollectionSummary = components['schemas']['CollectionSummary']
 export type CollectionDetail = components['schemas']['CollectionDetail']
 export type DocumentIssue = components['schemas']['DocumentIssueResponse']
+export type ChunkImportIssue = components['schemas']['ChunkImportIssueResponse']
 
 export class CollectionImportError extends Error {
   constructor(public issues: DocumentIssue[]) {
     super('文档导入失败')
+  }
+}
+
+export class ChunkManifestImportError extends Error {
+  constructor(public issues: ChunkImportIssue[]) {
+    super('chunk 清单导入失败')
   }
 }
 
@@ -40,6 +47,18 @@ export async function createCollection(args: {
   if (response.status === 422) {
     const payload = await response.json() as { issues?: DocumentIssue[] }
     if (payload.issues) throw new CollectionImportError(payload.issues)
+  }
+  return readJson<CollectionDetail>(response)
+}
+
+export async function importChunkManifest(name: string, file: File): Promise<CollectionDetail> {
+  const form = new FormData()
+  form.append('name', name)
+  form.append('file', file)
+  const response = await fetch('/api/v1/document-collections/import-chunks', { method: 'POST', body: form })
+  if (response.status === 422) {
+    const payload = await response.json() as { issues?: ChunkImportIssue[] }
+    if (payload.issues) throw new ChunkManifestImportError(payload.issues)
   }
   return readJson<CollectionDetail>(response)
 }

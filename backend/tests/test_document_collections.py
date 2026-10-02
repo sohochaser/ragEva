@@ -83,6 +83,8 @@ def test_upload_preserves_bytes_ids_checksum_and_ordered_chunks(tmp_path: Path) 
     detail = result.json()
     assert detail["chunk_size"] == 4
     assert detail["source_kind"] == "original_files"
+    assert all(doc["has_original_file"] for doc in detail["documents"])
+    assert [chunk["position"] for chunk in detail["chunks"]] == [0, 1, 2]
     assert detail["chunk_overlap"] == 1
     assert [doc["document_id"] for doc in detail["documents"]] == ["rag-guide", "guide-1"]
     assert detail["documents"][0]["checksum"] == sha256(content).hexdigest()
