@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { fetchPredictionBatches, type PredictionBatchSummary } from '../api/predictions'
 import { cancelRun, createRun, exportRunUrl, fetchRun, fetchRunCases, fetchRuns, type CaseStatus, type RunCasesPage, type RunSummary } from '../api/runs'
+import { fetchModels, fetchScenarios, fetchScenarioVersions, type OnlineModel, type Scenario } from '../api/scenarios'
 import { RunAggregateView, RunCaseDetail } from './RunResults'
 
 const statusLabels: Record<string, string> = {
@@ -12,6 +13,9 @@ const statusLabels: Record<string, string> = {
 
 export function RunPage() {
   const [batches, setBatches] = useState<PredictionBatchSummary[]>([])
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [scenarioVersions, setScenarioVersions] = useState<Scenario[]>([])
+  const [judgeModels, setJudgeModels] = useState<OnlineModel[]>([])
   const [runs, setRuns] = useState<RunSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selected, setSelected] = useState<RunSummary | null>(null)
@@ -20,6 +24,10 @@ export function RunPage() {
   const [caseStatus, setCaseStatus] = useState<CaseStatus | ''>('')
   const [caseId, setCaseId] = useState<string | null>(null)
   const [batchId, setBatchId] = useState('')
+  const [mode, setMode] = useState<'retrieval' | 'answer' | 'both'>('retrieval')
+  const [scenarioId, setScenarioId] = useState('')
+  const [scenarioVersion, setScenarioVersion] = useState(1)
+  const [judgeModelId, setJudgeModelId] = useState('')
   const [modelName, setModelName] = useState('BAAI/bge-small-zh-v1.5')
   const [modelPath, setModelPath] = useState('')
   const [threshold, setThreshold] = useState(0.8)
@@ -30,9 +38,12 @@ export function RunPage() {
 
   const reload = useCallback(async () => {
     try {
-      const [runItems, batchItems] = await Promise.all([fetchRuns(), fetchPredictionBatches()])
+      const [runItems, batchItems, scenarioItems, modelItems] = await Promise.all([fetchRuns(), fetchPredictionBatches(), fetchScenarios(), fetchModels()])
       setRuns(runItems)
-      setBatches(batchItems.filter((item) => item.evaluation_type !== 'answer'))
+      setBatches(batchItems)
+      setScenarios(scenarioItems); setJudgeModels(modelItems)
+      setScenarioId((current) => current || scenarioItems[0]?.scenario_id || '')
+      setJudgeModelId((current) => current || modelItems[0]?.id || '')
       setBatchId((current) => current || batchItems.find((item) => item.evaluation_type !== 'answer')?.id || '')
       setSelectedId((current) => current && runItems.some((item) => item.id === current) ? current : runItems[0]?.id ?? null)
       setError('')
@@ -40,6 +51,18 @@ export function RunPage() {
   }, [])
 
   useEffect(() => { void reload() }, [reload])
+  useEffect(() => {
+    const matching = batches.filter((item) => item.evaluation_type === 'both' || item.evaluation_type === mode)
+    setBatchId((current) => matching.some((item) => item.id === current) ? current : matching[0]?.id || '')
+  }, [batches, mode])
+  useEffect(() => {
+    if (!scenarioId) { setScenarioVersions([]); return }
+    let active = true
+    void fetchScenarioVersions(scenarioId).then((items) => {
+      if (active) { setScenarioVersions(items); setScenarioVersion(items[0]?.version ?? 1) }
+    }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '无法读取场景版本') })
+    return () => { active = false }
+  }, [scenarioId])
   useEffect(() => {
     if (!selectedId) { setSelected(null); setCases(null); return }
     let active = true
@@ -58,7 +81,7 @@ export function RunPage() {
     event.preventDefault()
     setBusy(true); setError('')
     try {
-      const run = await createRun({ prediction_batch_id: batchId, model_name: modelName.trim(), model_path: modelPath.trim() || null, threshold, offline, metrics })
+      const run = await createRun({ prediction_batch_id: batchId, mode, scenario_id: mode === 'retrieval' ? null : scenarioId, scenario_version: mode === 'retrieval' ? null : scenarioVersion, judge_model_id: mode === 'retrieval' ? null : judgeModelId, model_name: modelName.trim(), model_path: modelPath.trim() || null, threshold, offline, metrics })
       setRuns((items) => [run, ...items]); setSelectedId(run.id); setSelected(run); setOffset(0)
     } catch (cause) { setError(cause instanceof Error ? cause.message : '无法启动评测') }
     finally { setBusy(false) }
@@ -71,17 +94,16 @@ export function RunPage() {
   }
 
   const selectedCase = cases?.cases.find((item) => item.case_id === caseId)
+  const availableBatches = batches.filter((item) => item.evaluation_type === 'both' || item.evaluation_type === mode)
 
   return <>
     <header className="page-header"><div><p className="eyebrow">WORKSPACE</p><h1>评测运行</h1></div><button type="button" className="refresh-button" title="刷新运行" aria-label="刷新运行" onClick={() => void reload()}><RefreshCw size={17} /></button></header>
     <form className="run-form" onSubmit={(event) => void submit(event)}>
-      <label className="form-group"><span className="form-label">预测批次</span><select value={batchId} required onChange={(event) => setBatchId(event.target.value)}>{batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.source_filename} · v{batch.dataset_version}</option>)}</select></label>
-      <label className="form-group"><span className="form-label">向量模型</span><input value={modelName} required onChange={(event) => setModelName(event.target.value)} /></label>
-      <label className="form-group"><span className="form-label">模型目录</span><input value={modelPath} placeholder="默认下载缓存" onChange={(event) => setModelPath(event.target.value)} /></label>
-      <label className="form-group"><span className="form-label">相似度阈值</span><input type="number" min="-1" max="1" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /></label>
-      <label className="offline-option"><input type="checkbox" checked={offline} onChange={(event) => setOffline(event.target.checked)} />仅本地模型</label>
-      <fieldset className="run-metrics"><legend>指标</legend>{(['precision', 'map', 'ndcg'] as const).map((metric) => <label key={metric}><input type="checkbox" checked={metrics.includes(metric)} onChange={(event) => setMetrics((current) => event.target.checked ? [...current, metric] : current.filter((item) => item !== metric))} />{metric === 'precision' ? 'Precision' : metric === 'map' ? 'MAP' : 'NDCG'}</label>)}</fieldset>
-      <button type="submit" className="primary-button" disabled={!batchId || !metrics.length || busy}><Play size={15} />{busy ? '提交中' : '运行评测'}</button>
+      <label className="form-group"><span className="form-label">评测模式</span><select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="retrieval">检索</option><option value="answer">回答</option><option value="both">检索 + 回答</option></select></label>
+      <label className="form-group"><span className="form-label">预测批次</span><select value={batchId} required onChange={(event) => setBatchId(event.target.value)}>{availableBatches.map((batch) => <option key={batch.id} value={batch.id}>{batch.source_filename} · v{batch.dataset_version}</option>)}</select></label>
+      {mode !== 'answer' && <><label className="form-group"><span className="form-label">向量模型</span><input value={modelName} required onChange={(event) => setModelName(event.target.value)} /></label><label className="form-group"><span className="form-label">模型目录</span><input value={modelPath} placeholder="默认下载缓存" onChange={(event) => setModelPath(event.target.value)} /></label><label className="form-group"><span className="form-label">相似度阈值</span><input type="number" min="-1" max="1" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /></label><label className="offline-option"><input type="checkbox" checked={offline} onChange={(event) => setOffline(event.target.checked)} />仅本地模型</label><fieldset className="run-metrics"><legend>检索指标</legend>{(['precision', 'map', 'ndcg'] as const).map((metric) => <label key={metric}><input type="checkbox" checked={metrics.includes(metric)} onChange={(event) => setMetrics((current) => event.target.checked ? [...current, metric] : current.filter((item) => item !== metric))} />{metric === 'precision' ? 'Precision' : metric === 'map' ? 'MAP' : 'NDCG'}</label>)}</fieldset></>}
+      {mode !== 'retrieval' && <><label className="form-group"><span className="form-label">评价场景</span><select value={scenarioId} required onChange={(event) => setScenarioId(event.target.value)}>{scenarios.map((item) => <option key={item.scenario_id} value={item.scenario_id}>{item.name}</option>)}</select></label><label className="form-group"><span className="form-label">场景版本</span><select value={scenarioVersion} onChange={(event) => setScenarioVersion(Number(event.target.value))}>{scenarioVersions.map((item) => <option key={item.id} value={item.version}>v{item.version}</option>)}</select></label><label className="form-group"><span className="form-label">评分模型</span><select value={judgeModelId} required onChange={(event) => setJudgeModelId(event.target.value)}>{judgeModels.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.model_name}</option>)}</select></label></>}
+      <button type="submit" className="primary-button" disabled={!batchId || (mode !== 'answer' && !metrics.length) || (mode !== 'retrieval' && (!scenarioId || !judgeModelId)) || busy}><Play size={15} />{busy ? '提交中' : '运行评测'}</button>
     </form>
     {error && <p className="page-error" role="alert">{error}</p>}
     <div className="dataset-layout run-layout">

@@ -18,6 +18,7 @@ const run = {
 describe('RunPage', () => {
   it('shows progress and cancels a running evaluation', async () => {
     const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+      if (url === '/api/v1/scenarios' || url === '/api/v1/online-models') return Promise.resolve(new Response('[]'))
       if (url === '/api/v1/predictions') return Promise.resolve(new Response(JSON.stringify([{
         id: 'batch-1', source_filename: 'answers.jsonl', evaluation_type: 'retrieval',
         dataset_id: 'dataset-1', dataset_version: 1,
@@ -56,6 +57,7 @@ describe('RunPage', () => {
       distribution: { precision: { 10: [1, 0, 0, 0, 0], 20: [1, 0, 0, 0, 0] }, map: { 10: [0, 0, 0, 0, 1], 20: [0, 0, 0, 0, 1] }, ndcg: { 10: [0, 0, 0, 0, 1], 20: [0, 0, 0, 0, 1] } },
     } }
     vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/v1/scenarios' || url === '/api/v1/online-models') return Promise.resolve(new Response('[]'))
       if (url === '/api/v1/predictions') return Promise.resolve(new Response(JSON.stringify([{ id: 'batch-1', source_filename: 'answers.jsonl', evaluation_type: 'retrieval', dataset_id: 'dataset-1', dataset_version: 1 }])))
       if (url === '/api/v1/runs') return Promise.resolve(new Response(JSON.stringify([completed])))
       if (url.includes('/cases?')) return Promise.resolve(new Response(JSON.stringify({ run_id: 'run-1', total: 1, offset: 0, limit: 100, cases: [{ case_id: 'q1', status: 'success', question: '退款?', answer: '可退', reference_answer: '可退', contexts: [{ text: '七天可退', document_id: 'doc-1', chunk_id: null, source: null }], reference_chunks: [{ text: '七天可退', document_id: 'doc-1' }], score, error: null, target_latency_ms: 20, elapsed_ms: 2 }] })))
@@ -69,5 +71,33 @@ describe('RunPage', () => {
     expect(within(detail).getByRole('region', { name: '匹配证据' }).textContent).toContain('0.980')
     expect(within(detail).getByRole('link', { name: 'CSV' }).getAttribute('href')).toContain('format=csv')
     expect(within(detail).getByRole('link', { name: 'JSON' }).getAttribute('href')).toContain('format=json')
+  })
+
+  it('starts answer evaluation with a scenario version and shows metric evidence', async () => {
+    const scenario = { id: 'sv2', scenario_id: 's1', name: '客服', version: 2, faithfulness: '证据', relevance: '问题', correctness: '答案', prompt_version: 'answer-eval-v1', created_at: '2026-01-01' }
+    const model = { id: 'm1', name: 'Judge', model_name: 'judge', base_url: 'https://model.example/v1', has_token: true, timeout_seconds: 60, created_at: '2026-01-01' }
+    const answerRun = { ...run, status: 'completed', config: { mode: 'answer', answer: { scenario_id: 's1', scenario_version: 2 } }, aggregate: { valid_count: 0, not_applicable_count: 0, precision_at_k: { 10: null, 20: null }, map_at_k: { 10: null, 20: null }, ndcg_at_k: { 10: null, 20: null }, answer_metrics: { relevance: { valid_count: 1, failed_count: 0, not_applicable_count: 0, mean_score: 0.7 } } }, total_count: 1, processed_count: 1 }
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+      if (url === '/api/v1/predictions') return Promise.resolve(new Response(JSON.stringify([{ id: 'batch-1', source_filename: 'answer.jsonl', evaluation_type: 'answer', dataset_id: 'dataset-1', dataset_version: 1 }])))
+      if (url === '/api/v1/scenarios') return Promise.resolve(new Response(JSON.stringify([scenario])))
+      if (url === '/api/v1/scenarios/s1/versions') return Promise.resolve(new Response(JSON.stringify([scenario])))
+      if (url === '/api/v1/online-models') return Promise.resolve(new Response(JSON.stringify([model])))
+      if (url === '/api/v1/runs' && options?.method === 'POST') return Promise.resolve(new Response(JSON.stringify(answerRun)))
+      if (url === '/api/v1/runs') return Promise.resolve(new Response('[]'))
+      if (url.includes('/cases?')) return Promise.resolve(new Response(JSON.stringify({ run_id: 'run-1', total: 1, offset: 0, limit: 100, cases: [{ case_id: 'q1', status: 'success', question: '退款?', answer: '可退', reference_answer: '可退', contexts: null, reference_chunks: null, score: null, error: null, target_latency_ms: null, elapsed_ms: 20, answer_metrics: { relevance: { status: 'success', score: 0.7, reason: '回答了问题', raw_response: '{"score":0.7,"reason":"回答了问题"}', error: null, usage: { input_tokens: 12, output_tokens: 4 }, model_name: 'judge', prompt_version: 'answer-eval-v1', criteria: '问题' } } }] })))
+      return Promise.resolve(new Response(JSON.stringify(answerRun)))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+    render(<RunPage />)
+    await screen.findByRole('combobox', { name: '评测模式' })
+    await user.selectOptions(screen.getByRole('combobox', { name: '评测模式' }), 'answer')
+    await screen.findByRole('combobox', { name: '场景版本' })
+    await user.click(screen.getByRole('button', { name: '运行评测' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/runs', expect.objectContaining({ method: 'POST' })))
+    const submitted = fetchMock.mock.calls.find(([url, options]) => url === '/api/v1/runs' && options?.method === 'POST')
+    expect(JSON.parse(String(submitted?.[1]?.body))).toMatchObject({ mode: 'answer', scenario_id: 's1', scenario_version: 2, judge_model_id: 'm1' })
+    expect((await screen.findByRole('region', { name: '回答评分' })).textContent).toContain('回答了问题')
+    expect(screen.getByRole('region', { name: '总体指标' }).textContent).toContain('0.700')
   })
 })

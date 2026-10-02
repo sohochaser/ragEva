@@ -9,7 +9,9 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field, field_validator
 
+from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
 from backend.adapters.run_store import RunInputError, RunNotFound, RunStore
+from backend.adapters.scenario_store import ScenarioNotFound, ScenarioStore
 from backend.api.matching import ChunkInput, KScoreResponse
 from backend.api.predictions import PredictedChunkResponse
 from backend.config import Settings
@@ -20,6 +22,10 @@ from backend.worker.queue import score_run_task
 
 class RunCreate(BaseModel):
     prediction_batch_id: str = Field(min_length=1)
+    mode: Literal["retrieval", "answer", "both"] = "retrieval"
+    scenario_id: str | None = None
+    scenario_version: int | None = Field(default=None, ge=1)
+    judge_model_id: str | None = None
     model_name: str = Field(default="BAAI/bge-small-zh-v1.5", min_length=1)
     model_path: str | None = None
     offline: bool = False
@@ -74,6 +80,26 @@ class RunAggregate(BaseModel):
     map_at_k: dict[str, float | None]
     ndcg_at_k: dict[str, float | None]
     distribution: dict[str, dict[str, list[int]]] = Field(default_factory=dict)
+    answer_metrics: dict[str, "AnswerAggregate"] = Field(default_factory=dict)
+
+
+class AnswerAggregate(BaseModel):
+    valid_count: int
+    failed_count: int
+    not_applicable_count: int
+    mean_score: float | None
+
+
+class AnswerMetricResponse(BaseModel):
+    status: Literal["success", "failed", "not_applicable"]
+    score: float | None
+    reason: str | None
+    raw_response: str | None
+    error: str | None
+    usage: dict[str, int] | None
+    model_name: str
+    prompt_version: str
+    criteria: str
 
 
 class RetrievalScoreResponse(BaseModel):
@@ -90,6 +116,7 @@ class RunCaseResponse(BaseModel):
     error: str | None
     elapsed_ms: float | None
     score: RetrievalScoreResponse | None
+    answer_metrics: dict[str, AnswerMetricResponse] = Field(default_factory=dict)
     question: str
     reference_answer: str | None
     reference_chunks: list[ChunkInput] | None
@@ -103,12 +130,38 @@ class RunCaseResponse(BaseModel):
 def create_run_router(settings: Settings) -> APIRouter:
     router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
     store = RunStore(settings.data_dir)
+    scenarios = ScenarioStore(settings.data_dir)
+    models = OnlineModelStore(settings.data_dir)
 
     @router.post("", status_code=202, response_model=RunSummary)
     def create(request: RunCreate) -> dict[str, Any]:
         if not worker_is_ready(settings.data_dir, settings.worker_stale_after):
             raise HTTPException(status_code=503, detail="Worker 不可用")
         try:
+            answer_config = None
+            if request.mode in {"answer", "both"}:
+                if not request.scenario_id or not request.judge_model_id:
+                    raise RunInputError("回答评测需要场景和评分模型")
+                scenario = (
+                    scenarios.get_scenario_version(request.scenario_id, request.scenario_version)
+                    if request.scenario_version is not None
+                    else scenarios.list_versions(request.scenario_id)[0]
+                )
+                model = models.get(request.judge_model_id)
+                answer_config = {
+                    "scenario_id": scenario["scenario_id"],
+                    "scenario_version": scenario["version"],
+                    "prompt_version": scenario["prompt_version"],
+                    "criteria": {
+                        key: scenario[key] for key in ("faithfulness", "relevance", "correctness")
+                    },
+                    "judge_model_id": model["id"],
+                    "model_name": model["model_name"],
+                    "base_url": model["base_url"],
+                    "timeout_seconds": model["timeout_seconds"],
+                    "temperature": 0,
+                    "response_format": "json_object",
+                }
             model_path = (
                 str(Path(request.model_path).expanduser().resolve()) if request.model_path else None
             )
@@ -119,11 +172,17 @@ def create_run_router(settings: Settings) -> APIRouter:
                 request.offline,
                 request.threshold,
                 request.metrics,
+                request.mode,
+                answer_config,
             )
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="预测批次不存在") from exc
         except RunInputError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except ScenarioNotFound as exc:
+            raise HTTPException(status_code=404, detail="场景版本不存在") from exc
+        except OnlineModelNotFound as exc:
+            raise HTTPException(status_code=404, detail="评分模型不存在") from exc
         score_run_task(result["id"])
         return result
 
@@ -195,6 +254,7 @@ def create_run_router(settings: Settings) -> APIRouter:
             "score",
             "target_attempts",
             "target_usage",
+            "answer_metrics",
         ]
         writer = csv.DictWriter(output, fieldnames=columns)
         writer.writeheader()
@@ -205,7 +265,14 @@ def create_run_router(settings: Settings) -> APIRouter:
                 at_k = score["scores"].get(str(k)) if score else None
                 for field, source in (("precision", "precision"), ("ap", "ap"), ("ndcg", "ndcg")):
                     row[f"{field}_at_{k}"] = at_k[source] if at_k else None
-            for key in ("reference_chunks", "contexts", "score", "target_attempts", "target_usage"):
+            for key in (
+                "reference_chunks",
+                "contexts",
+                "score",
+                "target_attempts",
+                "target_usage",
+                "answer_metrics",
+            ):
                 row[key] = (
                     json.dumps(case[key], ensure_ascii=False) if case[key] is not None else None
                 )

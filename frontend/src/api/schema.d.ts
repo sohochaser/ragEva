@@ -472,6 +472,43 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnswerAggregate */
+        AnswerAggregate: {
+            /** Failed Count */
+            failed_count: number;
+            /** Mean Score */
+            mean_score: number | null;
+            /** Not Applicable Count */
+            not_applicable_count: number;
+            /** Valid Count */
+            valid_count: number;
+        };
+        /** AnswerMetricResponse */
+        AnswerMetricResponse: {
+            /** Criteria */
+            criteria: string;
+            /** Error */
+            error: string | null;
+            /** Model Name */
+            model_name: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Raw Response */
+            raw_response: string | null;
+            /** Reason */
+            reason: string | null;
+            /** Score */
+            score: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "success" | "failed" | "not_applicable";
+            /** Usage */
+            usage: {
+                [key: string]: number;
+            } | null;
+        };
         /** Body_import_dataset_api_v1_datasets_import_post */
         Body_import_dataset_api_v1_datasets_import_post: {
             /** Dataset Id */
@@ -813,6 +850,10 @@ export interface components {
         };
         /** RunAggregate */
         RunAggregate: {
+            /** Answer Metrics */
+            answer_metrics?: {
+                [key: string]: components["schemas"]["AnswerAggregate"];
+            };
             /** Distribution */
             distribution?: {
                 [key: string]: {
@@ -840,6 +881,10 @@ export interface components {
         RunCaseResponse: {
             /** Answer */
             answer: string | null;
+            /** Answer Metrics */
+            answer_metrics?: {
+                [key: string]: components["schemas"]["AnswerMetricResponse"];
+            };
             /** Case Id */
             case_id: string;
             /** Contexts */
@@ -886,8 +931,16 @@ export interface components {
         };
         /** RunCreate */
         RunCreate: {
+            /** Judge Model Id */
+            judge_model_id?: string | null;
             /** Metrics */
             metrics?: ("precision" | "map" | "ndcg")[];
+            /**
+             * Mode
+             * @default retrieval
+             * @enum {string}
+             */
+            mode: "retrieval" | "answer" | "both";
             /**
              * Model Name
              * @default BAAI/bge-small-zh-v1.5
@@ -902,6 +955,10 @@ export interface components {
             offline: boolean;
             /** Prediction Batch Id */
             prediction_batch_id: string;
+            /** Scenario Id */
+            scenario_id?: string | null;
+            /** Scenario Version */
+            scenario_version?: number | null;
             /**
              * Threshold
              * @default 0.8
