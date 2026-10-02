@@ -154,6 +154,8 @@ h1 { margin: 0; color: var(--ink); font-size: 30px; font-weight: 700; line-heigh
 .import-dialog form { display: grid; gap: 18px; padding: 22px 27px 25px; }
 .form-group { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .form-label { color: #3d4650; font-size: 12px; font-weight: 650; }
+.form-label, .chunk-meta, .run-timing, .evidence-meta { overflow-wrap: anywhere; }
+.chunk-meta { flex-wrap: wrap; }
 .form-group input, .form-group select { width: 100%; min-height: 36px; padding: 7px 10px; border: 1px solid #cfd4d9; border-radius: 4px; background: #fff; color: #3d4650; font-size: 13px; }
 .form-group input[type="file"] { padding: 6px 8px; }
 .form-group input::placeholder { color: #65707a; }
@@ -194,6 +196,7 @@ h1 { margin: 0; color: var(--ink); font-size: 30px; font-weight: 700; line-heigh
 .document-detail-header code { color: #65707a; font-size: 11px; }
 .document-meta { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 15px; color: #65707a; font-size: 11px; }
 .document-meta code { overflow-wrap: anywhere; }
+.target-config { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 10px 21px; border-bottom: 1px solid var(--line); color: #65707a; font-size: 12px; }
 .form-error { margin: 0; color: #a63e35; font-size: 12px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 5px; }
 

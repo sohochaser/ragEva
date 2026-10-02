@@ -9,7 +9,7 @@ const operations: Record<string, string> = {
 }
 
 function count(value: number | null, source: typeof sources[number]): string {
-  return `${value ?? '—'} · ${labels[source]}`
+  return value === null ? 'Unknown（未知）' : `${value} tokens（词元） · ${labels[source]}`
 }
 
 export function UsagePanel({ usage }: { usage: UsageSummary | null }) {

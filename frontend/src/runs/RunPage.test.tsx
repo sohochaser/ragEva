@@ -77,6 +77,9 @@ describe('RunPage', () => {
     const detail = await screen.findByRole('region', { name: /运行详情/ })
     await waitFor(() => expect(within(detail).getByRole('region', { name: /总体指标/ })).toBeTruthy())
     expect(within(detail).getByText('0.100')).toBeTruthy()
+    expect(within(detail).getByRole('heading', { name: 'Overall Metrics (0–1, unitless)（总体指标，0–1，无单位）' })).toBeTruthy()
+    expect(within(detail).getByText(/20.0 ms（毫秒）/)).toBeTruthy()
+    expect(within(detail).getByText(/Threshold \(-1 to 1, unitless\).*0.8/)).toBeTruthy()
     expect(within(detail).getByRole('region', { name: /模型 token 用量/ }).textContent).toContain('Actual（实际） 12 tokens（词元）')
     expect(within(detail).getAllByText('七天可退')).toHaveLength(2)
     expect(within(detail).getByRole('region', { name: /匹配证据/ }).textContent).toContain('0.980')
@@ -110,6 +113,7 @@ describe('RunPage', () => {
     const submitted = fetchMock.mock.calls.find(([url, options]) => url === '/api/v1/runs' && options?.method === 'POST')
     expect(JSON.parse(String(submitted?.[1]?.body))).toMatchObject({ mode: 'answer', scenario_id: 's1', scenario_version: 2, judge_model_id: 'm1' })
     expect((await screen.findByRole('region', { name: /回答评分/ })).textContent).toContain('回答了问题')
+    expect(screen.getByRole('heading', { name: 'Answer Scoring (0–1, unitless)（回答评分，0–1，无单位）' })).toBeTruthy()
     expect(screen.getByRole('region', { name: /总体指标/ }).textContent).toContain('0.700')
   })
 

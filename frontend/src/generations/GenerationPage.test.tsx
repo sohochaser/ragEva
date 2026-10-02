@@ -55,6 +55,7 @@ it('creates a generation and shows partial candidates with source evidence', asy
   await screen.findByRole('option', { name: /专用生成模型 · generator-v1/ })
   await user.clear(screen.getByRole('spinbutton', { name: /目标条数/ }))
   await user.type(screen.getByRole('spinbutton', { name: /目标条数/ }), '3')
+  expect(screen.getByText('Multi-Chunk Ratio（多切块比例） · 30%（百分比）')).toBeTruthy()
   await user.selectOptions(screen.getByRole('combobox', { name: /并发调用/ }), '2')
   await user.click(screen.getByRole('button', { name: /开始生成/ }))
   await screen.findByText(/产品支持什么？/)

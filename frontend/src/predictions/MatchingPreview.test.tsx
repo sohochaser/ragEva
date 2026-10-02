@@ -37,12 +37,15 @@ describe('MatchingPreview', () => {
     }} />)
 
     await user.click(await screen.findByRole('button', { name: /预览/ }))
+    expect(screen.getByRole('spinbutton', { name: 'Similarity Threshold (-1 to 1, unitless)（相似度阈值，-1 至 1，无单位）' })).toBeTruthy()
+    expect(within(screen.getAllByRole('table')[0]).getByRole('columnheader', { name: /Precision \(0–1, unitless\)/ })).toBeTruthy()
     const table = (await screen.findAllByRole('table'))[1]
     expect(screen.getByText('0.1000')).toBeTruthy()
     expect(within(table).getByText('0.9100')).toBeTruthy()
     expect(within(table).queryByText(/文档不同/)).toBeNull()
     await user.click(screen.getByRole('button', { name: /全部/ }))
     expect(within(table).getByText(/文档不同/)).toBeTruthy()
+    expect(within(table).getByText('Unknown（未知）')).toBeTruthy()
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     await user.clear(screen.getByRole('combobox', { name: /本地模型/ }))

@@ -9,9 +9,9 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 describe('DocumentCollectionPage', () => {
   it('shows the document and file-level error when an upload fails', async () => {
-    const fetchMock = vi.fn((url: string) => {
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => {
       if (url === '/api/v1/document-collections') {
-        if (fetchMock.mock.calls.length === 1) return Promise.resolve(new Response('[]'))
+        if (options?.method !== 'POST') return Promise.resolve(new Response('[]'))
         return Promise.resolve(new Response(JSON.stringify({
           error: 'validation_failed',
           issues: [{ file_index: 0, filename: 'broken.txt', field: 'file', code: 'invalid_encoding', message: '文件必须使用 UTF-8 编码' }],
@@ -27,8 +27,14 @@ describe('DocumentCollectionPage', () => {
     const dialog = screen.getByRole('dialog', { name: /上传原文/ })
     await user.type(within(dialog).getByRole('textbox', { name: /集合名称/ }), '测试集合')
     await user.upload(within(dialog).getByLabelText(/原文文件/), new File(['bad'], 'broken.txt'))
-    expect(within(dialog).getByRole('textbox', { name: /broken.txt · Document ID（文档 ID）/ })).toBeTruthy()
+    expect(within(dialog).getByRole('textbox', { name: 'broken.txt · 3 bytes（字节） · Document ID（文档 ID）' })).toBeTruthy()
+    expect((within(dialog).getByRole('spinbutton', { name: 'Chunk Size (characters)（切块大小，字符）' }) as HTMLInputElement).value).toBe('1000')
+    expect((within(dialog).getByRole('spinbutton', { name: 'Chunk Overlap (characters)（重叠量，字符）' }) as HTMLInputElement).value).toBe('100')
     fireEvent.submit(dialog.querySelector('form')!)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    const form = fetchMock.mock.calls[1][1]?.body as FormData
+    expect(form.get('chunk_size')).toBe('1000')
+    expect(form.get('chunk_overlap')).toBe('100')
     await waitFor(() => expect(within(dialog).getByRole('alert').textContent).toContain('broken.txt · File 1（文件 1） · file: 文件必须使用 UTF-8 编码'))
     expect(screen.getByRole('dialog', { name: /上传原文/ })).toBeTruthy()
   })
@@ -98,6 +104,24 @@ describe('DocumentCollectionPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /导入 chunk 清单/ })).toBeNull())
     expect(screen.getByText(/无原文文件/)).toBeTruthy()
     const chunks = within(screen.getByRole('region', { name: /chunk 清单/ })).getAllByRole('listitem')
-    expect(chunks.map((item) => item.textContent)).toEqual(['#1doc-a第一段', '#2doc-b第二段'])
+    expect(chunks.map((item) => item.textContent)).toEqual(['#1doc-a3 characters（字符）第一段', '#2doc-b3 characters（字符）第二段'])
+  })
+
+  it('shows exact source bytes and counts Unicode chunk characters', async () => {
+    const collection = {
+      id: 'c2', name: '来源文档', source_kind: 'source_files', chunk_size: 1000, chunk_overlap: 100,
+      document_count: 1, created_at: '2026-10-02',
+      documents: [{ document_id: 'doc-1', filename: '来源.txt', checksum: 'abc', byte_count: 1234567,
+        has_original_file: true, chunks: [{ position: 0, text: 'A😀中' }] }],
+      chunks: [{ position: 0, document_id: 'doc-1', text: 'A😀中' }],
+    }
+    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
+      url === '/api/v1/document-collections' ? [collection] : collection,
+    )))))
+    render(<DocumentCollectionPage />)
+    const detail = await screen.findByRole('region', { name: '来源.txt' })
+    expect(detail.textContent).toContain('1234567 bytes（字节）')
+    expect(detail.textContent).toContain('3 characters（字符）')
+    expect(detail.textContent).toContain('A😀中')
   })
 })

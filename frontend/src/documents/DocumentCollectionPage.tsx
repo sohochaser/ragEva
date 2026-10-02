@@ -51,13 +51,13 @@ function UploadDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
           setIds(selected.map(() => ''))
         }} /></label>
         {files.length > 0 && <div className="document-file-ids">{files.map((file, index) =>
-          <label className="form-group" key={`${file.name}-${index}`}><span className="form-label">{file.name} · Document ID（文档 ID）</span>
+          <label className="form-group" key={`${file.name}-${index}`}><span className="form-label">{file.name} · {file.size} bytes（字节） · Document ID（文档 ID）</span>
             <input value={ids[index] ?? ''} placeholder="Auto Generate（自动生成）" onChange={(event) => setIds((current) => current.map((id, position) => position === index ? event.target.value : id))} />
           </label>,
         )}</div>}
         <div className="document-settings">
-          <label className="form-group"><span className="form-label">Chunk Size（切块大小）</span><input type="number" min={1} max={10000} required value={chunkSize} onChange={(event) => setChunkSize(Number(event.target.value))} /></label>
-          <label className="form-group"><span className="form-label">Chunk Overlap（重叠量）</span><input type="number" min={0} max={Math.max(0, chunkSize - 1)} required value={chunkOverlap} onChange={(event) => setChunkOverlap(Number(event.target.value))} /></label>
+          <label className="form-group"><span className="form-label">Chunk Size (characters)（切块大小，字符）</span><input type="number" min={1} max={10000} required value={chunkSize} onChange={(event) => setChunkSize(Number(event.target.value))} /></label>
+          <label className="form-group"><span className="form-label">Chunk Overlap (characters)（重叠量，字符）</span><input type="number" min={0} max={Math.max(0, chunkSize - 1)} required value={chunkOverlap} onChange={(event) => setChunkOverlap(Number(event.target.value))} /></label>
         </div>
         {error && <p className="form-error" role="alert">{error}</p>}
         {issues.length > 0 && <div className="import-issues" role="alert"><strong>Upload failed, {issues.length} errors（上传失败，共 {issues.length} 处错误）</strong><ul>{issues.map((issue, index) =>
@@ -154,11 +154,11 @@ export function DocumentCollectionPage() {
       <div className="dataset-workspace">{detail && selectedId === detail.id ? <>
         <div className="dataset-toolbar"><div><h2>{detail.name}</h2><span>{detail.source_kind === 'chunks_only' ? 'No Source Files（无原文文件）' : `Chunk Size（切块大小） ${detail.chunk_size} characters（字符） · Overlap（重叠量） ${detail.chunk_overlap} characters（字符）`}</span></div><div className="batch-counts"><span>{detail.chunks.length} chunks（{detail.chunks.length} 个切块）</span></div></div>
         {detail.source_kind === 'chunks_only' ? <div className="document-detail-list"><section className="document-detail" aria-label="Chunk Manifest（chunk 清单）">
-          <ol className="chunk-list">{detail.chunks.map((chunk) => <li key={chunk.position}><div className="chunk-meta"><span>#{chunk.position + 1}</span><code>{chunk.document_id}</code></div><p>{chunk.text}</p></li>)}</ol>
+          <ol className="chunk-list">{detail.chunks.map((chunk) => <li key={chunk.position}><div className="chunk-meta"><span>#{chunk.position + 1}</span><code>{chunk.document_id}</code><span>{Array.from(chunk.text).length} characters（字符）</span></div><p>{chunk.text}</p></li>)}</ol>
         </section></div> : <div className="document-detail-list">{detail.documents.map((document) => <section key={document.document_id} className="document-detail" aria-label={document.filename ?? document.document_id}>
           <div className="document-detail-header"><FileText size={18} /><strong>{document.filename}</strong><code>{document.document_id}</code></div>
-          <div className="document-meta"><span>{document.byte_count} bytes（字节）</span><span>SHA-256 <code>{document.checksum}</code></span><span>{document.chunks.length} chunks（{document.chunks.length} 个切块）</span></div>
-          <ol className="chunk-list">{document.chunks.map((chunk) => <li key={chunk.position}><div className="chunk-meta"><span>#{chunk.position + 1}</span></div><p>{chunk.text}</p></li>)}</ol>
+          <div className="document-meta"><span>{document.byte_count === null ? 'Unknown Size（大小未知）' : `${document.byte_count} bytes（字节）`}</span><span>SHA-256 <code>{document.checksum}</code></span><span>{document.chunks.length} chunks（{document.chunks.length} 个切块）</span></div>
+          <ol className="chunk-list">{document.chunks.map((chunk) => <li key={chunk.position}><div className="chunk-meta"><span>#{chunk.position + 1}</span><span>{Array.from(chunk.text).length} characters（字符）</span></div><p>{chunk.text}</p></li>)}</ol>
         </section>)}</div>}
       </> : <div className="empty-state"><FileText size={25} /><span>Select Document Collection（选择文档集合）</span></div>}</div>
     </div>
