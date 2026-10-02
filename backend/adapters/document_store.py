@@ -45,6 +45,10 @@ class CollectionNotFound(Exception):
     pass
 
 
+class OriginalFileNotFound(Exception):
+    pass
+
+
 class DocumentStore:
     def __init__(self, data_dir: Path) -> None:
         self.path = data_dir / "rageva.sqlite3"
@@ -184,3 +188,31 @@ class DocumentStore:
             "documents": details,
             "chunks": ordered_chunks,
         }
+
+    def get_download_manifest(self, collection_id: str) -> dict[str, Any]:
+        with closing(self._connect()) as connection:
+            collection = connection.execute(
+                "SELECT id, name, source_kind FROM document_collections WHERE id = ?",
+                (collection_id,),
+            ).fetchone()
+            if collection is None:
+                raise CollectionNotFound(collection_id)
+            documents = connection.execute(
+                "SELECT id, document_id, filename, checksum FROM source_documents "
+                "WHERE collection_id = ? AND filename IS NOT NULL ORDER BY position",
+                (collection_id,),
+            ).fetchall()
+        return {**dict(collection), "documents": [dict(document) for document in documents]}
+
+    def get_original_file(self, document_pk: str) -> dict[str, Any]:
+        with closing(self._connect()) as connection:
+            document = connection.execute(
+                "SELECT d.filename, d.checksum, d.content FROM source_documents d "
+                "JOIN document_collections c ON c.id = d.collection_id "
+                "WHERE d.id = ? AND c.source_kind = 'original_files' "
+                "AND d.content IS NOT NULL",
+                (document_pk,),
+            ).fetchone()
+        if document is None:
+            raise OriginalFileNotFound(document_pk)
+        return dict(document)
