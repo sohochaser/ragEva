@@ -16,6 +16,10 @@ describe('MatchingPreview', () => {
       })))
       return Promise.resolve(new Response(JSON.stringify({
         model_id: 'fake-v1', threshold: 0.8,
+        match_rule_version: 'one-to-one-v1', gain_rule_version: 'ordered-linear-v1',
+        scores: [{ k: 10, precision: 0.1, ap: 1, ndcg: 1,
+          matches: [{ predicted_index: 0, reference_index: 0, similarity: 0.91 }], decisions: [],
+        }],
         pairs: [
           { reference_index: 0, predicted_index: 0, similarity: 0.91, candidate: true, reason: 'candidate' },
           { reference_index: 0, predicted_index: 1, similarity: null, candidate: false, reason: 'document_mismatch' },
@@ -33,7 +37,8 @@ describe('MatchingPreview', () => {
     }} />)
 
     await user.click(await screen.findByRole('button', { name: '预览' }))
-    const table = await screen.findByRole('table')
+    const table = (await screen.findAllByRole('table'))[1]
+    expect(screen.getByText('0.1000')).toBeTruthy()
     expect(within(table).getByText('0.9100')).toBeTruthy()
     expect(within(table).queryByText('文档不同')).toBeNull()
     await user.click(screen.getByRole('button', { name: '全部' }))

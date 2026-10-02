@@ -61,6 +61,10 @@ def test_preview_filters_documents_and_applies_threshold(
     assert edges[2]["reason"] == "document_mismatch"
     assert edges[3]["reason"] == "below_threshold"
     assert result.json()["model_id"] == "fake-v1"
+    assert result.json()["match_rule_version"] == "one-to-one-v1"
+    assert result.json()["scores"][0]["k"] == 10
+    assert result.json()["scores"][0]["precision"] == 0.1
+    assert result.json()["scores"][0]["matches"][0]["predicted_index"] == 0
 
     second = api.post("/api/v1/matching/preview", json=payload)
     assert second.status_code == 200

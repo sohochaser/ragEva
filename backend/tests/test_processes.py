@@ -1,3 +1,5 @@
+import io
+import json
 import os
 import signal
 import socket
@@ -9,6 +11,11 @@ import urllib.request
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from backend.api.main import create_app
+from backend.config import Settings
 
 
 @contextmanager
@@ -94,3 +101,83 @@ def test_real_api_and_worker_lifecycle(tmp_path: Path) -> None:
             assert "address already in use" in collision.stderr.lower()
         wait_for_status(f"{url}/ready", 503)
         assert api.poll() is None
+
+
+def test_worker_consumes_run_from_api_queue(tmp_path: Path) -> None:
+    client = TestClient(create_app(Settings(data_dir=tmp_path)))
+    gold = client.post(
+        "/api/v1/datasets/import",
+        data={"dataset_name": "integration"},
+        files={
+            "file": (
+                "gold.jsonl",
+                io.BytesIO(
+                    json.dumps(
+                        {
+                            "case_id": "q1",
+                            "question": "Q",
+                            "reference_chunks": [{"text": "known", "document_id": "doc"}],
+                        }
+                    ).encode()
+                ),
+            )
+        },
+    )
+    assert gold.status_code == 201, gold.text
+    prediction = client.post(
+        "/api/v1/predictions/import",
+        data={"dataset_id": gold.json()["dataset_id"], "evaluation_type": "retrieval"},
+        files={
+            "file": (
+                "pred.jsonl",
+                io.BytesIO(
+                    json.dumps(
+                        {
+                            "case_id": "q1",
+                            "contexts": [{"text": "known", "document_id": "doc"}],
+                        }
+                    ).encode()
+                ),
+            )
+        },
+    )
+    assert prediction.status_code == 201, prediction.text
+
+    port = free_port()
+    environment = {
+        **os.environ,
+        "RAGEVA_DATA_DIR": str(tmp_path),
+        "RAGEVA_API_PORT": str(port),
+        "RAGEVA_HEARTBEAT_INTERVAL": "1",
+    }
+    base = f"http://127.0.0.1:{port}/api/v1"
+    with running([sys.executable, "-m", "backend.api"], environment):
+        wait_for_status(f"{base}/health/live", 200)
+        with running([sys.executable, "-m", "backend.worker"], environment):
+            wait_for_status(f"{base}/health/ready", 200)
+            payload = json.dumps(
+                {
+                    "prediction_batch_id": prediction.json()["id"],
+                    "model_name": "missing-local-model",
+                    "offline": True,
+                }
+            ).encode()
+            request = urllib.request.Request(
+                f"{base}/runs",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                assert response.status == 202
+                run_id = json.load(response)["id"]
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                with urllib.request.urlopen(f"{base}/runs/{run_id}", timeout=2) as response:
+                    run = json.load(response)
+                if run["status"] == "failed":
+                    break
+                time.sleep(0.1)
+            else:
+                raise AssertionError("Worker did not finish queued run")
+            assert run["failed_count"] == 1

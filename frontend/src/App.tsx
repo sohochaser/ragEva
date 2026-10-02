@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { readHealth, type ServiceState } from './api/health'
 import { DatasetPage } from './datasets/DatasetPage'
 import { PredictionPage } from './predictions/PredictionPage'
+import { RunPage } from './runs/RunPage'
 
 type StatusDashboardProps = {
   api: ServiceState
@@ -74,7 +75,7 @@ export function StatusDashboard({ api, worker, refreshedAt, onRefresh }: StatusD
 }
 
 export function App() {
-  const [page, setPage] = useState<'datasets' | 'predictions' | 'status'>('datasets')
+  const [page, setPage] = useState<'datasets' | 'predictions' | 'runs' | 'status'>('datasets')
   const [api, setApi] = useState<ServiceState>('checking')
   const [worker, setWorker] = useState<ServiceState>('checking')
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
@@ -99,6 +100,7 @@ export function App() {
         <nav aria-label="主导航">
           <button type="button" className={`nav-item ${page === 'datasets' ? 'nav-active' : ''}`} onClick={() => setPage('datasets')}><Database size={17} aria-hidden="true" />数据集</button>
           <button type="button" className={`nav-item ${page === 'predictions' ? 'nav-active' : ''}`} onClick={() => setPage('predictions')}><FileInput size={17} aria-hidden="true" />预测批次</button>
+          <button type="button" className={`nav-item ${page === 'runs' ? 'nav-active' : ''}`} onClick={() => setPage('runs')}><Workflow size={17} aria-hidden="true" />评测运行</button>
           <button type="button" className={`nav-item ${page === 'status' ? 'nav-active' : ''}`} onClick={() => setPage('status')}><Activity size={17} aria-hidden="true" />系统状态</button>
         </nav>
         <div className="sidebar-foot">本机工作台</div>
@@ -106,6 +108,7 @@ export function App() {
       <main className="main-content">
         <div hidden={page !== 'datasets'}><DatasetPage /></div>
         <div hidden={page !== 'predictions'}><PredictionPage /></div>
+        <div hidden={page !== 'runs'}><RunPage /></div>
         {page === 'status' && <StatusDashboard api={api} worker={worker} refreshedAt={refreshedAt} onRefresh={() => void refresh()} />}
       </main>
     </div>

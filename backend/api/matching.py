@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from backend.adapters.local_embeddings import EmbeddingCache, FastEmbedEncoder, ModelUnavailable
 from backend.config import Settings
 from backend.domain.matching import candidate_pairs, relevant_texts
+from backend.domain.retrieval_scoring import score_retrieval
 
 
 class ChunkInput(BaseModel):
@@ -32,10 +33,37 @@ class CandidateResponse(BaseModel):
     reason: str
 
 
+class SelectedMatchResponse(BaseModel):
+    predicted_index: int
+    reference_index: int
+    similarity: float
+
+
+class EdgeDecisionResponse(BaseModel):
+    reference_index: int
+    predicted_index: int
+    similarity: float | None
+    candidate: bool
+    selected: bool
+    reason: str
+
+
+class KScoreResponse(BaseModel):
+    k: int
+    precision: float
+    ap: float
+    ndcg: float
+    matches: list[SelectedMatchResponse]
+    decisions: list[EdgeDecisionResponse]
+
+
 class PreviewResponse(BaseModel):
     model_id: str
     threshold: float
     pairs: list[CandidateResponse]
+    match_rule_version: str
+    gain_rule_version: str
+    scores: list[KScoreResponse]
 
 
 def create_matching_router(settings: Settings) -> APIRouter:
@@ -57,12 +85,32 @@ def create_matching_router(settings: Settings) -> APIRouter:
             pairs = candidate_pairs(
                 request.reference_chunks, request.predicted_chunks, vectors, request.threshold
             )
+            scoring = score_retrieval(
+                request.reference_chunks,
+                request.predicted_chunks,
+                pairs,
+                encoder.model_id,
+                request.threshold,
+            )
         except (ModelUnavailable, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         return PreviewResponse(
             model_id=encoder.model_id,
             threshold=request.threshold,
             pairs=[CandidateResponse(**vars(pair)) for pair in pairs],
+            match_rule_version=scoring.match_rule_version,
+            gain_rule_version=scoring.gain_rule_version,
+            scores=[
+                KScoreResponse(
+                    k=item.k,
+                    precision=item.precision,
+                    ap=item.ap,
+                    ndcg=item.ndcg,
+                    matches=[SelectedMatchResponse(**vars(match)) for match in item.matches],
+                    decisions=[EdgeDecisionResponse(**vars(edge)) for edge in item.decisions],
+                )
+                for item in scoring.scores.values()
+            ],
         )
 
     return router

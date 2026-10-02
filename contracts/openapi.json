@@ -259,6 +259,51 @@
         "title": "DatasetSummary",
         "type": "object"
       },
+      "EdgeDecisionResponse": {
+        "properties": {
+          "candidate": {
+            "title": "Candidate",
+            "type": "boolean"
+          },
+          "predicted_index": {
+            "title": "Predicted Index",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reference_index": {
+            "title": "Reference Index",
+            "type": "integer"
+          },
+          "selected": {
+            "title": "Selected",
+            "type": "boolean"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity"
+          }
+        },
+        "required": [
+          "reference_index",
+          "predicted_index",
+          "similarity",
+          "candidate",
+          "selected",
+          "reason"
+        ],
+        "title": "EdgeDecisionResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -359,6 +404,50 @@
           "message"
         ],
         "title": "ImportIssueResponse",
+        "type": "object"
+      },
+      "KScoreResponse": {
+        "properties": {
+          "ap": {
+            "title": "Ap",
+            "type": "number"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/EdgeDecisionResponse"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/SelectedMatchResponse"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "ndcg": {
+            "title": "Ndcg",
+            "type": "number"
+          },
+          "precision": {
+            "title": "Precision",
+            "type": "number"
+          }
+        },
+        "required": [
+          "k",
+          "precision",
+          "ap",
+          "ndcg",
+          "matches",
+          "decisions"
+        ],
+        "title": "KScoreResponse",
         "type": "object"
       },
       "PredictedChunkResponse": {
@@ -648,6 +737,14 @@
       },
       "PreviewResponse": {
         "properties": {
+          "gain_rule_version": {
+            "title": "Gain Rule Version",
+            "type": "string"
+          },
+          "match_rule_version": {
+            "title": "Match Rule Version",
+            "type": "string"
+          },
           "model_id": {
             "title": "Model Id",
             "type": "string"
@@ -659,6 +756,13 @@
             "title": "Pairs",
             "type": "array"
           },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/KScoreResponse"
+            },
+            "title": "Scores",
+            "type": "array"
+          },
           "threshold": {
             "title": "Threshold",
             "type": "number"
@@ -667,7 +771,10 @@
         "required": [
           "model_id",
           "threshold",
-          "pairs"
+          "pairs",
+          "match_rule_version",
+          "gain_rule_version",
+          "scores"
         ],
         "title": "PreviewResponse",
         "type": "object"
@@ -688,6 +795,249 @@
           "document_id"
         ],
         "title": "ReferenceChunkResponse",
+        "type": "object"
+      },
+      "RunCasesPage": {
+        "properties": {
+          "cases": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "total",
+          "offset",
+          "limit",
+          "cases"
+        ],
+        "title": "RunCasesPage",
+        "type": "object"
+      },
+      "RunCreate": {
+        "properties": {
+          "metrics": {
+            "items": {
+              "enum": [
+                "precision",
+                "map",
+                "ndcg"
+              ],
+              "type": "string"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "model_name": {
+            "default": "BAAI/bge-small-zh-v1.5",
+            "minLength": 1,
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Path"
+          },
+          "offline": {
+            "default": false,
+            "title": "Offline",
+            "type": "boolean"
+          },
+          "prediction_batch_id": {
+            "minLength": 1,
+            "title": "Prediction Batch Id",
+            "type": "string"
+          },
+          "threshold": {
+            "default": 0.8,
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "prediction_batch_id"
+        ],
+        "title": "RunCreate",
+        "type": "object"
+      },
+      "RunSummary": {
+        "properties": {
+          "aggregate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregate"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "cancelled_count": {
+            "title": "Cancelled Count",
+            "type": "integer"
+          },
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "failed_count": {
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "not_applicable_count": {
+            "title": "Not Applicable Count",
+            "type": "integer"
+          },
+          "prediction_batch_id": {
+            "title": "Prediction Batch Id",
+            "type": "string"
+          },
+          "processed_count": {
+            "title": "Processed Count",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "success_count": {
+            "title": "Success Count",
+            "type": "integer"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "prediction_batch_id",
+          "dataset_id",
+          "dataset_version",
+          "status",
+          "config",
+          "model_id",
+          "aggregate",
+          "cancel_requested",
+          "total_count",
+          "processed_count",
+          "success_count",
+          "failed_count",
+          "not_applicable_count",
+          "cancelled_count",
+          "created_at",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "RunSummary",
+        "type": "object"
+      },
+      "SelectedMatchResponse": {
+        "properties": {
+          "predicted_index": {
+            "title": "Predicted Index",
+            "type": "integer"
+          },
+          "reference_index": {
+            "title": "Reference Index",
+            "type": "integer"
+          },
+          "similarity": {
+            "title": "Similarity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "predicted_index",
+          "reference_index",
+          "similarity"
+        ],
+        "title": "SelectedMatchResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -1304,6 +1654,219 @@
         "summary": "Get Batch",
         "tags": [
           "predictions"
+        ]
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunSummary"
+                  },
+                  "title": "Response List Runs Api V1 Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "runs"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_v1_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "cancel_api_v1_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/cases": {
+      "get": {
+        "operationId": "get_cases_api_v1_runs__run_id__cases_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunCasesPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cases",
+        "tags": [
+          "runs"
         ]
       }
     }

@@ -8,7 +8,9 @@ US-002 已落地的数据集边界：`backend/adapters/dataset_files.py` 读取 
 
 US-003 已落地的预测边界：`backend/domain/predictions.py` 归一化答案、有序预测 chunk 和可选耗时，`backend/adapters/prediction_store.py` 保存不可变批次并绑定数据集版本。同文件建集与预测写入共用 SQLite 事务。`backend/api/predictions.py` 提供导入、列表与分页预览；文件适配器不调用被测 RAG。React 预测批次页显示匹配与未匹配数量和逐题内容。
 
-US-005 已落地的本地匹配边界：`backend/adapters/local_embeddings.py` 使用 FastEmbed ONNX 模型下载/离线加载，并以权重内容指纹及正文键缓存向量；`backend/domain/matching.py` 仅在文档 ID 相同的参考/预测 chunk 之间生成余弦阈值候选。`backend/api/matching.py` 和 React 预测详情提供样本预览，不执行一对一归属或计分。
+US-005/006 已落地的本地匹配边界：`backend/adapters/local_embeddings.py` 使用 FastEmbed ONNX 模型下载/离线加载，并以权重内容指纹及正文键缓存向量；`backend/domain/matching.py` 仅在文档 ID 相同的参考/预测 chunk 之间生成余弦阈值候选。`backend/domain/retrieval_scoring.py` 对 Top-10/20 分别做最大命中数一对一归属，计算 Precision、AP、NDCG；预览接口和 React 预测详情展示候选与分数。
+
+US-004 已落地的运行边界：`backend/adapters/run_store.py` 在 SQLite 中固定批次、模型、阈值及规则配置，逐题结果和错误分别保存；Huey Worker 在 `backend/worker/run_processor.py` 中逐题评分。API 可异步创建运行、查询列表/进度/样本、取消运行；React 运行页轮询状态。重复任务只允许一次从排队态领取，取消后不再写入新样本结果。
 
 ```text
 React + TypeScript

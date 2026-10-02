@@ -8,8 +8,11 @@ import numpy as np
 
 
 class Chunk(Protocol):
-    text: str
-    document_id: str
+    @property
+    def text(self) -> str: ...
+
+    @property
+    def document_id(self) -> str: ...
 
 
 @dataclass(frozen=True)

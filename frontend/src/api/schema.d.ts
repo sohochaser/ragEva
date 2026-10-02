@@ -191,6 +191,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_api_v1_runs_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_api_v1_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_api_v1_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cases */
+        get: operations["get_cases_api_v1_runs__run_id__cases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -270,6 +339,21 @@ export interface components {
             /** Version Count */
             version_count: number;
         };
+        /** EdgeDecisionResponse */
+        EdgeDecisionResponse: {
+            /** Candidate */
+            candidate: boolean;
+            /** Predicted Index */
+            predicted_index: number;
+            /** Reason */
+            reason: string;
+            /** Reference Index */
+            reference_index: number;
+            /** Selected */
+            selected: boolean;
+            /** Similarity */
+            similarity: number | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -305,6 +389,21 @@ export interface components {
             line: number | null;
             /** Message */
             message: string;
+        };
+        /** KScoreResponse */
+        KScoreResponse: {
+            /** Ap */
+            ap: number;
+            /** Decisions */
+            decisions: components["schemas"]["EdgeDecisionResponse"][];
+            /** K */
+            k: number;
+            /** Matches */
+            matches: components["schemas"]["SelectedMatchResponse"][];
+            /** Ndcg */
+            ndcg: number;
+            /** Precision */
+            precision: number;
         };
         /** PredictedChunkResponse */
         PredictedChunkResponse: {
@@ -408,10 +507,16 @@ export interface components {
         };
         /** PreviewResponse */
         PreviewResponse: {
+            /** Gain Rule Version */
+            gain_rule_version: string;
+            /** Match Rule Version */
+            match_rule_version: string;
             /** Model Id */
             model_id: string;
             /** Pairs */
             pairs: components["schemas"]["CandidateResponse"][];
+            /** Scores */
+            scores: components["schemas"]["KScoreResponse"][];
             /** Threshold */
             threshold: number;
         };
@@ -421,6 +526,97 @@ export interface components {
             document_id: string;
             /** Text */
             text: string;
+        };
+        /** RunCasesPage */
+        RunCasesPage: {
+            /** Cases */
+            cases: {
+                [key: string]: unknown;
+            }[];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Run Id */
+            run_id: string;
+            /** Total */
+            total: number;
+        };
+        /** RunCreate */
+        RunCreate: {
+            /** Metrics */
+            metrics?: ("precision" | "map" | "ndcg")[];
+            /**
+             * Model Name
+             * @default BAAI/bge-small-zh-v1.5
+             */
+            model_name: string;
+            /** Model Path */
+            model_path?: string | null;
+            /**
+             * Offline
+             * @default false
+             */
+            offline: boolean;
+            /** Prediction Batch Id */
+            prediction_batch_id: string;
+            /**
+             * Threshold
+             * @default 0.8
+             */
+            threshold: number;
+        };
+        /** RunSummary */
+        RunSummary: {
+            /** Aggregate */
+            aggregate: {
+                [key: string]: unknown;
+            } | null;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /** Cancelled Count */
+            cancelled_count: number;
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
+            /** Created At */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Version */
+            dataset_version: number;
+            /** Failed Count */
+            failed_count: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Model Id */
+            model_id: string | null;
+            /** Not Applicable Count */
+            not_applicable_count: number;
+            /** Prediction Batch Id */
+            prediction_batch_id: string;
+            /** Processed Count */
+            processed_count: number;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Success Count */
+            success_count: number;
+            /** Total Count */
+            total_count: number;
+        };
+        /** SelectedMatchResponse */
+        SelectedMatchResponse: {
+            /** Predicted Index */
+            predicted_index: number;
+            /** Reference Index */
+            reference_index: number;
+            /** Similarity */
+            similarity: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -790,6 +986,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PredictionBatchDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_v1_runs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"][];
+                };
+            };
+        };
+    };
+    create_api_v1_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_v1_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cases_api_v1_runs__run_id__cases_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCasesPage"];
                 };
             };
             /** @description Validation Error */
