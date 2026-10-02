@@ -1,4 +1,4 @@
-import { Activity, ArrowUpRight, Database, FileInput, Files, Globe2, RefreshCw, Server, SlidersHorizontal, Sparkles, Workflow } from 'lucide-react'
+import { Activity, ArrowUpRight, Database, FileInput, Files, Globe2, Menu, RefreshCw, Server, SlidersHorizontal, Sparkles, Workflow, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { readHealth, type ServiceState } from './api/health'
@@ -21,6 +21,55 @@ const labels: Record<ServiceState, string> = {
   checking: '检查中',
   online: '运行中',
   offline: '不可用',
+}
+
+type Page = 'documents' | 'generations' | 'datasets' | 'predictions' | 'targets' | 'scenarios' | 'runs' | 'status'
+
+const navigation = [
+  { page: 'documents', label: '文档集合', icon: Files },
+  { page: 'generations', label: '候选生成', icon: Sparkles },
+  { page: 'datasets', label: '数据集', icon: Database },
+  { page: 'predictions', label: '预测批次', icon: FileInput },
+  { page: 'targets', label: 'HTTP 目标', icon: Globe2 },
+  { page: 'scenarios', label: '评价场景', icon: SlidersHorizontal },
+  { page: 'runs', label: '评测运行', icon: Workflow },
+  { page: 'status', label: '系统状态', icon: Activity },
+] as const
+
+export function PrimaryNavigation({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-top">
+        <div className="brand"><span className="brand-mark">r</span><span>ragEva</span></div>
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label={menuOpen ? '关闭导航' : '打开导航'}
+          aria-expanded={menuOpen}
+          aria-controls="primary-nav"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+        </button>
+      </div>
+      <nav id="primary-nav" className={`primary-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="主导航">
+        {navigation.map(({ page: target, label, icon: Icon }) => (
+          <button
+            key={target}
+            type="button"
+            className={`nav-item ${page === target ? 'nav-active' : ''}`}
+            aria-current={page === target ? 'page' : undefined}
+            onClick={() => { onNavigate(target); setMenuOpen(false) }}
+          >
+            <Icon size={17} aria-hidden="true" />{label}
+          </button>
+        ))}
+      </nav>
+      <div className="sidebar-foot">本机工作台</div>
+    </aside>
+  )
 }
 
 function StatusItem({
@@ -79,7 +128,7 @@ export function StatusDashboard({ api, worker, refreshedAt, onRefresh }: StatusD
 }
 
 export function App() {
-  const [page, setPage] = useState<'documents' | 'generations' | 'datasets' | 'predictions' | 'targets' | 'scenarios' | 'runs' | 'status'>('documents')
+  const [page, setPage] = useState<Page>('documents')
   const [datasetFocus, setDatasetFocus] = useState<{ datasetId: string; version: number } | null>(null)
   const [api, setApi] = useState<ServiceState>('checking')
   const [worker, setWorker] = useState<ServiceState>('checking')
@@ -98,22 +147,14 @@ export function App() {
     return () => window.clearInterval(interval)
   }, [refresh])
 
+  const navigate = (target: Page) => {
+    if (target === 'datasets') setDatasetFocus(null)
+    setPage(target)
+  }
+
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">r</span><span>ragEva</span></div>
-        <nav aria-label="主导航">
-          <button type="button" className={`nav-item ${page === 'documents' ? 'nav-active' : ''}`} onClick={() => setPage('documents')}><Files size={17} aria-hidden="true" />文档集合</button>
-          <button type="button" className={`nav-item ${page === 'generations' ? 'nav-active' : ''}`} onClick={() => setPage('generations')}><Sparkles size={17} aria-hidden="true" />候选生成</button>
-          <button type="button" className={`nav-item ${page === 'datasets' ? 'nav-active' : ''}`} onClick={() => { setDatasetFocus(null); setPage('datasets') }}><Database size={17} aria-hidden="true" />数据集</button>
-          <button type="button" className={`nav-item ${page === 'predictions' ? 'nav-active' : ''}`} onClick={() => setPage('predictions')}><FileInput size={17} aria-hidden="true" />预测批次</button>
-          <button type="button" className={`nav-item ${page === 'targets' ? 'nav-active' : ''}`} onClick={() => setPage('targets')}><Globe2 size={17} aria-hidden="true" />HTTP 目标</button>
-          <button type="button" className={`nav-item ${page === 'scenarios' ? 'nav-active' : ''}`} onClick={() => setPage('scenarios')}><SlidersHorizontal size={17} aria-hidden="true" />评价场景</button>
-          <button type="button" className={`nav-item ${page === 'runs' ? 'nav-active' : ''}`} onClick={() => setPage('runs')}><Workflow size={17} aria-hidden="true" />评测运行</button>
-          <button type="button" className={`nav-item ${page === 'status' ? 'nav-active' : ''}`} onClick={() => setPage('status')}><Activity size={17} aria-hidden="true" />系统状态</button>
-        </nav>
-        <div className="sidebar-foot">本机工作台</div>
-      </aside>
+      <PrimaryNavigation page={page} onNavigate={navigate} />
       <main className="main-content">
         {page === 'documents' && <DocumentCollectionPage />}
         {page === 'generations' && <GenerationPage onOpenCollections={() => setPage('documents')} onOpenDatasets={(version) => { setDatasetFocus({ datasetId: version.dataset_id, version: version.version }); setPage('datasets') }} />}
