@@ -89,6 +89,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/document-collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Collections */
+        get: operations["list_collections_api_v1_document_collections_get"];
+        put?: never;
+        /** Create Collection */
+        post: operations["create_collection_api_v1_document_collections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-collections/{collection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Collection */
+        get: operations["get_collection_api_v1_document_collections__collection_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -543,6 +578,25 @@ export interface components {
                 [key: string]: number;
             } | null;
         };
+        /** Body_create_collection_api_v1_document_collections_post */
+        Body_create_collection_api_v1_document_collections_post: {
+            /**
+             * Chunk Overlap
+             * @default 100
+             */
+            chunk_overlap: number;
+            /**
+             * Chunk Size
+             * @default 1000
+             */
+            chunk_size: number;
+            /** Document Ids */
+            document_ids?: string | null;
+            /** Files */
+            files: string[];
+            /** Name */
+            name: string;
+        };
         /** Body_import_dataset_api_v1_datasets_import_post */
         Body_import_dataset_api_v1_datasets_import_post: {
             /** Dataset Id */
@@ -603,6 +657,49 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** CollectionDetail */
+        CollectionDetail: {
+            /** Chunk Overlap */
+            chunk_overlap: number;
+            /** Chunk Size */
+            chunk_size: number;
+            /** Created At */
+            created_at: string;
+            /** Document Count */
+            document_count: number;
+            /** Documents */
+            documents: components["schemas"]["SourceDocumentResponse"][];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Source Kind */
+            source_kind: string;
+        };
+        /** CollectionImportFailure */
+        CollectionImportFailure: {
+            /** Error */
+            error: string;
+            /** Issues */
+            issues: components["schemas"]["DocumentIssueResponse"][];
+        };
+        /** CollectionSummary */
+        CollectionSummary: {
+            /** Chunk Overlap */
+            chunk_overlap: number;
+            /** Chunk Size */
+            chunk_size: number;
+            /** Created At */
+            created_at: string;
+            /** Document Count */
+            document_count: number;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Source Kind */
+            source_kind: string;
+        };
         /** DatasetSummary */
         DatasetSummary: {
             /** Created At */
@@ -617,6 +714,19 @@ export interface components {
             name: string;
             /** Version Count */
             version_count: number;
+        };
+        /** DocumentIssueResponse */
+        DocumentIssueResponse: {
+            /** Code */
+            code: string;
+            /** Field */
+            field: string;
+            /** File Index */
+            file_index: number | null;
+            /** Filename */
+            filename: string | null;
+            /** Message */
+            message: string;
         };
         /** EdgeDecisionResponse */
         EdgeDecisionResponse: {
@@ -1158,6 +1268,26 @@ export interface components {
             /** Similarity */
             similarity: number;
         };
+        /** SourceChunkResponse */
+        SourceChunkResponse: {
+            /** Position */
+            position: number;
+            /** Text */
+            text: string;
+        };
+        /** SourceDocumentResponse */
+        SourceDocumentResponse: {
+            /** Byte Count */
+            byte_count: number;
+            /** Checksum */
+            checksum: string;
+            /** Chunks */
+            chunks: components["schemas"]["SourceChunkResponse"][];
+            /** Document Id */
+            document_id: string;
+            /** Filename */
+            filename: string;
+        };
         /** TargetCreate */
         TargetCreate: {
             /** Bearer Token */
@@ -1519,6 +1649,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_collections_api_v1_document_collections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionSummary"][];
+                };
+            };
+        };
+    };
+    create_collection_api_v1_document_collections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_create_collection_api_v1_document_collections_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDetail"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionImportFailure"];
+                };
+            };
+        };
+    };
+    get_collection_api_v1_document_collections__collection_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDetail"];
                 };
             };
             /** @description Validation Error */
