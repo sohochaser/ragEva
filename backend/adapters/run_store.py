@@ -88,6 +88,9 @@ class RunStore(PredictionStore):
         metrics: list[MetricKey],
         mode: str = "retrieval",
         answer_config: dict[str, Any] | None = None,
+        source_run_id: str | None = None,
+        match_rule_version: str = "one-to-one-v1",
+        gain_rule_version: str = "ordered-linear-v1",
     ) -> dict[str, Any]:
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -105,6 +108,24 @@ class RunStore(PredictionStore):
                 raise RunInputError("该预测批次没有答案，不能运行回答指标")
             if mode in {"answer", "both"} and answer_config is None:
                 raise RunInputError("回答评测需要场景版本和评分模型")
+            if match_rule_version != "one-to-one-v1" or gain_rule_version != "ordered-linear-v1":
+                raise RunInputError("不支持的检索规则版本")
+            source_config = None
+            source_model_id = None
+            if source_run_id is not None:
+                source = connection.execute(
+                    "SELECT batch_id, status, config_json, model_id "
+                    "FROM evaluation_runs WHERE id = ?",
+                    (source_run_id,),
+                ).fetchone()
+                if source is None:
+                    raise RunNotFound(source_run_id)
+                if source["status"] not in {"completed", "failed", "cancelled"}:
+                    raise RunInputError("原运行尚未结束")
+                if source["batch_id"] != batch_id:
+                    raise RunInputError("复评必须使用原预测批次")
+                source_config = json.loads(source["config_json"])
+                source_model_id = source["model_id"]
             run_id = str(uuid4())
             config = {
                 "prediction_batch_id": batch_id,
@@ -114,11 +135,28 @@ class RunStore(PredictionStore):
                 "offline": offline,
                 "threshold": threshold,
                 "metrics": metrics,
-                "match_rule_version": "one-to-one-v1",
-                "gain_rule_version": "ordered-linear-v1",
+                "match_rule_version": match_rule_version,
+                "gain_rule_version": gain_rule_version,
                 "mode": mode,
                 "answer": answer_config,
+                "rescore_of_run_id": source_run_id,
             }
+            retrieval_fields = (
+                "model_name",
+                "model_path",
+                "offline",
+                "threshold",
+                "match_rule_version",
+                "gain_rule_version",
+            )
+            if (
+                source_config is not None
+                and source_model_id is not None
+                and mode in {"retrieval", "both"}
+                and source_config.get("mode") in {"retrieval", "both"}
+                and all(source_config.get(key) == config[key] for key in retrieval_fields)
+            ):
+                config["reuse_retrieval_from_run_id"] = source_run_id
             connection.execute(
                 "INSERT INTO evaluation_runs "
                 "(id, batch_id, status, config_json, created_at) VALUES (?, ?, 'queued', ?, ?)",
@@ -149,6 +187,32 @@ class RunStore(PredictionStore):
                 ],
             )
         return self.get_run(run_id)
+
+    def reusable_retrieval_scores(self, run_id: str) -> dict[str, dict[str, Any]]:
+        source_id = self.config(run_id).get("reuse_retrieval_from_run_id")
+        if source_id is None:
+            return {}
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT case_id, score_json FROM run_cases WHERE run_id = ? "
+                "AND score_json IS NOT NULL",
+                (source_id,),
+            ).fetchall()
+        return {row["case_id"]: json.loads(row["score_json"]) for row in rows}
+
+    def retrieval_case_ids(self, run_id: str) -> list[str]:
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT rc.case_id FROM run_cases rc "
+                "JOIN evaluation_runs r ON r.id = rc.run_id "
+                "JOIN prediction_batches b ON b.id = r.batch_id "
+                "JOIN evaluation_cases c ON c.version_id = b.dataset_version_id "
+                "AND c.case_id = rc.case_id "
+                "WHERE rc.run_id = ? AND rc.status = 'pending' "
+                "AND c.reference_chunks_json IS NOT NULL",
+                (run_id,),
+            ).fetchall()
+        return [row["case_id"] for row in rows]
 
     def claim(self, run_id: str) -> bool:
         with closing(self._connect()) as connection, connection:

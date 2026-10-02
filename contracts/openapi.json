@@ -1440,6 +1440,12 @@
       },
       "RunCreate": {
         "properties": {
+          "gain_rule_version": {
+            "const": "ordered-linear-v1",
+            "default": "ordered-linear-v1",
+            "title": "Gain Rule Version",
+            "type": "string"
+          },
           "judge_model_id": {
             "anyOf": [
               {
@@ -1450,6 +1456,12 @@
               }
             ],
             "title": "Judge Model Id"
+          },
+          "match_rule_version": {
+            "const": "one-to-one-v1",
+            "default": "one-to-one-v1",
+            "title": "Match Rule Version",
+            "type": "string"
           },
           "metrics": {
             "items": {
@@ -1535,6 +1547,151 @@
           "prediction_batch_id"
         ],
         "title": "RunCreate",
+        "type": "object"
+      },
+      "RunRescore": {
+        "properties": {
+          "gain_rule_version": {
+            "anyOf": [
+              {
+                "const": "ordered-linear-v1",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gain Rule Version"
+          },
+          "judge_model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Model Id"
+          },
+          "match_rule_version": {
+            "anyOf": [
+              {
+                "const": "one-to-one-v1",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Rule Version"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "precision",
+                    "map",
+                    "ndcg"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "retrieval",
+                  "answer",
+                  "both"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Path"
+          },
+          "offline": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offline"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Version"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "title": "RunRescore",
         "type": "object"
       },
       "RunSummary": {
@@ -3318,6 +3475,58 @@
           }
         },
         "summary": "Export",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/rescore": {
+      "post": {
+        "operationId": "rescore_api_v1_runs__run_id__rescore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRescore"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rescore",
         "tags": [
           "runs"
         ]

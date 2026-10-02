@@ -18,6 +18,8 @@ US-008 已落地的目标边界：`backend/adapters/http_target.py` 以通用 PO
 
 US-010/011 已落地的回答评分边界：场景三项评价标准按不可变版本保存；固定提示词骨架、变量和 JSON 输出契约由代码版本控制。在线 OpenAI 兼容模型配置与独立权限文件中的 Token 分开保存。运行选择检索、回答或组合模式，固定场景版本与非敏感模型参数快照。Worker 从同一不可变预测批次读取答案与上下文，分别保存每题每项指标的适用性、分数、原因、原始响应、usage 和错误；单项失败不覆盖其他指标。检索与回答聚合各用自己的有效样本分母，运行和逐题 API、CSV/JSON 导出、React 结果页读取同一持久化记录。
 
+US-012 已落地的复评边界：`POST /api/v1/runs/{id}/rescore` 从已结束运行读取原预测批次与配置，以覆盖项创建新的不可变运行快照，并记录来源运行 ID。检索模型、路径、离线选项、阈值和规则版本均相同时，Worker 按题复用原运行保存的匹配证据；无已保存证据的题才重新编码与评分。场景版本变化时回答指标重新评分，旧场景快照和旧结果不变。复评只读取预测存储，不进入目标采集适配器。
+
 US-009 扩展目标协议为 SSE：`backend/adapters/sse_target.py` 使用 `httpx-sse` 解析事件，按 `answer.delta`、`contexts`、`completed`、`error` 组装结果。仅收到 `completed` 且满足评测类型必需字段才保存成功预测；逐次尝试记录 TTFT、TTLT 与流完成耗时，断流和流内错误由有限重试处理。目标配置固定 JSON 或 SSE 模式，二者输出同一规范化预测结构。
 
 ```text
@@ -80,7 +82,7 @@ Python API (FastAPI)
 - `POST /api/v1/predictions/import`，`GET /api/v1/predictions/{id}`
 - `GET /api/v1/scenarios`，`POST /api/v1/scenarios`，`PUT /api/v1/scenarios/{id}`，`POST /api/v1/scenarios/{id}/preview`
 - `POST /api/v1/runs`，`GET /api/v1/runs/{id}`，`POST /api/v1/runs/{id}/cancel`
-- `POST /api/v1/runs/{id}/rescore`：复用原运行的预测批次，使用所选场景模板创建新评分运行。
+- `POST /api/v1/runs/{id}/rescore`：复用原运行的预测批次，按可选场景、模型、阈值及规则版本覆盖项创建新评分运行。
 - `GET /api/v1/runs/{id}/results`，`GET /api/v1/runs/{id}/export`
 
 接口路径是设计草案；实现前用 OpenAPI 样例和契约测试固定字段、错误码及分页规则。

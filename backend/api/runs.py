@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
 from backend.adapters.run_store import RunInputError, RunNotFound, RunStore
@@ -31,6 +31,8 @@ class RunCreate(BaseModel):
     offline: bool = False
     threshold: float = Field(default=0.8, ge=-1, le=1)
     metrics: list[MetricKey] = Field(default_factory=lambda: default_metrics())
+    match_rule_version: Literal["one-to-one-v1"] = "one-to-one-v1"
+    gain_rule_version: Literal["ordered-linear-v1"] = "ordered-linear-v1"
 
     @field_validator("metrics")
     @classmethod
@@ -42,6 +44,20 @@ class RunCreate(BaseModel):
 
 def default_metrics() -> list[MetricKey]:
     return ["precision", "map", "ndcg"]
+
+
+class RunRescore(BaseModel):
+    mode: Literal["retrieval", "answer", "both"] | None = None
+    scenario_id: str | None = None
+    scenario_version: int | None = Field(default=None, ge=1)
+    judge_model_id: str | None = None
+    model_name: str | None = None
+    model_path: str | None = None
+    offline: bool | None = None
+    threshold: float | None = Field(default=None, ge=-1, le=1)
+    metrics: list[MetricKey] | None = None
+    match_rule_version: Literal["one-to-one-v1"] | None = None
+    gain_rule_version: Literal["ordered-linear-v1"] | None = None
 
 
 class RunSummary(BaseModel):
@@ -133,8 +149,7 @@ def create_run_router(settings: Settings) -> APIRouter:
     scenarios = ScenarioStore(settings.data_dir)
     models = OnlineModelStore(settings.data_dir)
 
-    @router.post("", status_code=202, response_model=RunSummary)
-    def create(request: RunCreate) -> dict[str, Any]:
+    def start_run(request: RunCreate, source_run_id: str | None = None) -> dict[str, Any]:
         if not worker_is_ready(settings.data_dir, settings.worker_stale_after):
             raise HTTPException(status_code=503, detail="Worker 不可用")
         try:
@@ -174,6 +189,9 @@ def create_run_router(settings: Settings) -> APIRouter:
                 request.metrics,
                 request.mode,
                 answer_config,
+                source_run_id,
+                request.match_rule_version,
+                request.gain_rule_version,
             )
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="预测批次不存在") from exc
@@ -185,6 +203,41 @@ def create_run_router(settings: Settings) -> APIRouter:
             raise HTTPException(status_code=404, detail="评分模型不存在") from exc
         score_run_task(result["id"])
         return result
+
+    @router.post("", status_code=202, response_model=RunSummary)
+    def create(request: RunCreate) -> dict[str, Any]:
+        return start_run(request)
+
+    @router.post("/{run_id}/rescore", status_code=202, response_model=RunSummary)
+    def rescore(run_id: str, request: RunRescore) -> dict[str, Any]:
+        try:
+            source = store.get_run(run_id)
+        except RunNotFound as exc:
+            raise HTTPException(status_code=404, detail="原运行不存在") from exc
+        previous = source["config"]
+        answer = previous.get("answer") or {}
+        values = {
+            "prediction_batch_id": source["prediction_batch_id"],
+            "mode": previous.get("mode", "retrieval"),
+            "scenario_id": answer.get("scenario_id"),
+            "scenario_version": answer.get("scenario_version"),
+            "judge_model_id": answer.get("judge_model_id"),
+            "model_name": previous["model_name"],
+            "model_path": previous["model_path"],
+            "offline": previous["offline"],
+            "threshold": previous["threshold"],
+            "metrics": previous["metrics"],
+            "match_rule_version": previous["match_rule_version"],
+            "gain_rule_version": previous["gain_rule_version"],
+        }
+        changes = request.model_dump(exclude_unset=True)
+        if "scenario_id" in changes and "scenario_version" not in changes:
+            values["scenario_version"] = None
+        try:
+            effective = RunCreate.model_validate({**values, **changes})
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors()) from exc
+        return start_run(effective, run_id)
 
     @router.get("", response_model=list[RunSummary])
     def list_runs() -> list[dict[str, Any]]:

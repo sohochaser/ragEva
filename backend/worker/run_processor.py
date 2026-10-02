@@ -121,7 +121,11 @@ def process_run(
     encoder: Encoder | None = None
     cache: EmbeddingCache | None = None
     retrieval_setup_error: str | None = None
-    if mode in {"retrieval", "both"}:
+    reused_scores = store.reusable_retrieval_scores(run_id)
+    needs_encoder = mode in {"retrieval", "both"} and any(
+        case_id not in reused_scores for case_id in store.retrieval_case_ids(run_id)
+    )
+    if needs_encoder:
         try:
             model_path = Path(config["model_path"]) if config["model_path"] else None
             encoder = encoder_factory(
@@ -129,12 +133,17 @@ def process_run(
             )
             store.set_model_id(run_id, encoder.model_id)
             cache = EmbeddingCache(data_dir)
+            if reused_scores:
+                source_id = config["reuse_retrieval_from_run_id"]
+                if encoder.model_id != store.get_run(source_id)["model_id"]:
+                    reused_scores = {}
         except Exception as exc:
             retrieval_setup_error = f"model_unavailable:{type(exc).__name__}"
-            if mode == "retrieval":
-                store.fail_pending(run_id, retrieval_setup_error)
-                store.finish(run_id)
-                return
+    elif reused_scores:
+        source_id = config["reuse_retrieval_from_run_id"]
+        source_model_id = store.get_run(source_id)["model_id"]
+        if source_model_id:
+            store.set_model_id(run_id, source_model_id)
 
     with ExitStack() as stack:
         client: httpx.Client | None = None
@@ -158,7 +167,14 @@ def process_run(
                     retrieval_score = None
                     retrieval_error = retrieval_setup_error
                     if mode in {"retrieval", "both"}:
-                        if encoder is not None and cache is not None:
+                        if case_id in reused_scores:
+                            retrieval_status = "success"
+                            retrieval_score = reused_scores[case_id]
+                            retrieval_error = None
+                        elif item["reference_chunks"] is None:
+                            retrieval_status = "not_applicable"
+                            retrieval_error = None
+                        elif encoder is not None and cache is not None:
                             try:
                                 retrieval_status, retrieval_score, retrieval_error = (
                                     _score_retrieval_case(item, config, encoder, cache)
