@@ -277,6 +277,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/target-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Jobs */
+        get: operations["list_jobs_api_v1_target_jobs_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_target_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/target-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Job */
+        get: operations["get_job_api_v1_target_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/target-jobs/{job_id}/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Cases */
+        get: operations["job_cases_api_v1_target_jobs__job_id__cases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Targets */
+        get: operations["list_targets_api_v1_targets_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_targets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/targets/{target_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test */
+        post: operations["test_api_v1_targets__target_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -608,8 +695,16 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "success" | "failed" | "not_applicable" | "cancelled";
+            /** Target Attempts */
+            target_attempts?: {
+                [key: string]: unknown;
+            }[] | null;
             /** Target Latency Ms */
             target_latency_ms: number | null;
+            /** Target Usage */
+            target_usage?: {
+                [key: string]: number;
+            } | null;
         };
         /** RunCasesPage */
         RunCasesPage: {
@@ -696,6 +791,144 @@ export interface components {
             reference_index: number;
             /** Similarity */
             similarity: number;
+        };
+        /** TargetCreate */
+        TargetCreate: {
+            /** Bearer Token */
+            bearer_token?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Retries
+             * @default 1
+             */
+            retries: number;
+            /**
+             * Timeout Seconds
+             * @default 30
+             */
+            timeout_seconds: number;
+            /** Url */
+            url: string;
+        };
+        /** TargetJobCase */
+        TargetJobCase: {
+            /** Attempts */
+            attempts: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Case Id */
+            case_id: string;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /** Error */
+            error: string | null;
+            /** Status */
+            status: string;
+            /** Usage */
+            usage: {
+                [key: string]: number;
+            } | null;
+        };
+        /** TargetJobCreate */
+        TargetJobCreate: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Version */
+            dataset_version: number;
+            /**
+             * Evaluation Type
+             * @default both
+             * @enum {string}
+             */
+            evaluation_type: "answer" | "retrieval" | "both";
+            /** Target Id */
+            target_id: string;
+        };
+        /** TargetJobSummary */
+        TargetJobSummary: {
+            /** Batch Id */
+            batch_id: string | null;
+            /** Created At */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /** Dataset Version */
+            dataset_version: number;
+            /**
+             * Evaluation Type
+             * @enum {string}
+             */
+            evaluation_type: "answer" | "retrieval" | "both";
+            /** Failed Count */
+            failed_count: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Processed Count */
+            processed_count: number;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Success Count */
+            success_count: number;
+            /** Target Id */
+            target_id: string;
+            /** Total Count */
+            total_count: number;
+        };
+        /** TargetSummary */
+        TargetSummary: {
+            /** Created At */
+            created_at: string;
+            /** Has Token */
+            has_token: boolean;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Retries */
+            retries: number;
+            /** Timeout Seconds */
+            timeout_seconds: number;
+            /** Url */
+            url: string;
+        };
+        /** TargetTestRequest */
+        TargetTestRequest: {
+            /** Case Id */
+            case_id: string;
+            /**
+             * Evaluation Type
+             * @default both
+             * @enum {string}
+             */
+            evaluation_type: "answer" | "retrieval" | "both";
+            /** Question */
+            question: string;
+        };
+        /** TargetTestResponse */
+        TargetTestResponse: {
+            /** Answer */
+            answer: string | null;
+            /** Attempts */
+            attempts: {
+                [key: string]: unknown;
+            }[];
+            /** Contexts */
+            contexts: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Error */
+            error: string | null;
+            /** Success */
+            success: boolean;
+            /** Usage */
+            usage: {
+                [key: string]: number;
+            } | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1249,6 +1482,209 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_jobs_api_v1_target_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetJobSummary"][];
+                };
+            };
+        };
+    };
+    create_api_v1_target_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetJobCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetJobSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_api_v1_target_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetJobSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_cases_api_v1_target_jobs__job_id__cases_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetJobCase"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_targets_api_v1_targets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetSummary"][];
+                };
+            };
+        };
+    };
+    create_api_v1_targets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_api_v1_targets__target_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetTestResponse"];
                 };
             };
             /** @description Validation Error */

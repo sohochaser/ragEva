@@ -1,3 +1,4 @@
+import http.server
 import io
 import json
 import os
@@ -5,6 +6,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -14,8 +16,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from backend.adapters.dataset_store import DatasetStore
+from backend.adapters.target_store import TargetStore
 from backend.api.main import create_app
 from backend.config import Settings
+from backend.domain.datasets import EvaluationCase, ReferenceChunk
 
 
 @contextmanager
@@ -181,3 +186,85 @@ def test_worker_consumes_run_from_api_queue(tmp_path: Path) -> None:
             else:
                 raise AssertionError("Worker did not finish queued run")
             assert run["failed_count"] == 1
+
+
+def test_worker_collects_http_predictions_from_real_queue(tmp_path: Path) -> None:
+    class RagHandler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            assert payload == {"case_id": "q1", "question": "Q"}
+            body = json.dumps({"contexts": [{"text": "A", "document_id": "d"}]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, _format: str, *_args: object) -> None:
+            return
+
+    rag = http.server.ThreadingHTTPServer(("127.0.0.1", 0), RagHandler)
+    thread = threading.Thread(target=rag.serve_forever)
+    thread.start()
+    try:
+        dataset = DatasetStore(tmp_path).import_cases(
+            "gold",
+            None,
+            "generated",
+            [EvaluationCase("q1", "Q", None, (ReferenceChunk("A", "d"),))],
+        )
+        target = TargetStore(tmp_path).create_target(
+            "test",
+            f"http://127.0.0.1:{rag.server_port}/rag",
+            None,
+            2,
+            0,
+        )
+        port = free_port()
+        environment = {
+            **os.environ,
+            "RAGEVA_DATA_DIR": str(tmp_path),
+            "RAGEVA_API_PORT": str(port),
+            "RAGEVA_HEARTBEAT_INTERVAL": "1",
+        }
+        base = f"http://127.0.0.1:{port}/api/v1"
+        with running([sys.executable, "-m", "backend.api"], environment):
+            wait_for_status(f"{base}/health/live", 200)
+            with running([sys.executable, "-m", "backend.worker"], environment):
+                wait_for_status(f"{base}/health/ready", 200)
+                payload = json.dumps(
+                    {
+                        "target_id": target["id"],
+                        "dataset_id": dataset["dataset_id"],
+                        "dataset_version": 1,
+                        "evaluation_type": "retrieval",
+                    }
+                ).encode()
+                request = urllib.request.Request(
+                    f"{base}/target-jobs",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    job_id = json.load(response)["id"]
+                deadline = time.monotonic() + 10
+                while time.monotonic() < deadline:
+                    with urllib.request.urlopen(
+                        f"{base}/target-jobs/{job_id}", timeout=2
+                    ) as response:
+                        job = json.load(response)
+                    if job["status"] == "completed":
+                        break
+                    time.sleep(0.1)
+                else:
+                    raise AssertionError("Worker did not complete HTTP collection")
+                with urllib.request.urlopen(
+                    f"{base}/predictions/{job['batch_id']}", timeout=2
+                ) as response:
+                    batch = json.load(response)
+                assert batch["predictions"][0]["contexts"][0]["document_id"] == "d"
+    finally:
+        rag.shutdown()
+        thread.join(timeout=5)
+        rag.server_close()

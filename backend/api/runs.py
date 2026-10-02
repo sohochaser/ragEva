@@ -96,6 +96,8 @@ class RunCaseResponse(BaseModel):
     answer: str | None
     contexts: list[PredictedChunkResponse] | None
     target_latency_ms: float | None
+    target_attempts: list[dict[str, Any]] | None = None
+    target_usage: dict[str, int] | None = None
 
 
 def create_run_router(settings: Settings) -> APIRouter:
@@ -191,6 +193,8 @@ def create_run_router(settings: Settings) -> APIRouter:
             "reference_chunks",
             "contexts",
             "score",
+            "target_attempts",
+            "target_usage",
         ]
         writer = csv.DictWriter(output, fieldnames=columns)
         writer.writeheader()
@@ -201,7 +205,7 @@ def create_run_router(settings: Settings) -> APIRouter:
                 at_k = score["scores"].get(str(k)) if score else None
                 for field, source in (("precision", "precision"), ("ap", "ap"), ("ndcg", "ndcg")):
                     row[f"{field}_at_{k}"] = at_k[source] if at_k else None
-            for key in ("reference_chunks", "contexts", "score"):
+            for key in ("reference_chunks", "contexts", "score", "target_attempts", "target_usage"):
                 row[key] = (
                     json.dumps(case[key], ensure_ascii=False) if case[key] is not None else None
                 )

@@ -99,11 +99,12 @@ class RunStore(PredictionStore):
                 (run_id, batch_id, json.dumps(config, ensure_ascii=False), _now()),
             )
             rows = connection.execute(
-                "SELECT c.position, c.case_id, p.case_id AS predicted_id "
+                "SELECT c.position, c.case_id, p.case_id AS predicted_id, pa.error AS target_error "
                 "FROM evaluation_cases c LEFT JOIN predictions p "
                 "ON p.case_id = c.case_id AND p.batch_id = ? "
+                "LEFT JOIN prediction_attempts pa ON pa.case_id = c.case_id AND pa.batch_id = ? "
                 "WHERE c.version_id = ? ORDER BY c.position",
-                (batch_id, batch["dataset_version_id"]),
+                (batch_id, batch_id, batch["dataset_version_id"]),
             ).fetchall()
             connection.executemany(
                 "INSERT INTO run_cases (run_id, position, case_id, status, error) "
@@ -114,7 +115,9 @@ class RunStore(PredictionStore):
                         row["position"],
                         row["case_id"],
                         "pending" if row["predicted_id"] else "failed",
-                        None if row["predicted_id"] else "missing_prediction",
+                        None
+                        if row["predicted_id"]
+                        else row["target_error"] or "missing_prediction",
                     )
                     for row in rows
                 ],
@@ -160,10 +163,13 @@ class RunStore(PredictionStore):
         with closing(self._connect()) as connection:
             row = connection.execute(
                 "SELECT c.question, c.reference_answer, c.reference_chunks_json, "
-                "p.answer, p.contexts_json, p.latency_ms "
+                "p.answer, p.contexts_json, p.latency_ms, pa.error AS target_error, "
+                "pa.attempts_json, pa.usage_json, pa.elapsed_ms AS target_elapsed_ms "
                 "FROM evaluation_runs r JOIN prediction_batches b ON b.id = r.batch_id "
                 "JOIN evaluation_cases c ON c.version_id = b.dataset_version_id AND c.case_id = ? "
                 "LEFT JOIN predictions p ON p.batch_id = b.id AND p.case_id = c.case_id "
+                "LEFT JOIN prediction_attempts pa ON pa.batch_id = b.id "
+                "AND pa.case_id = c.case_id "
                 "WHERE r.id = ?",
                 (case_id, run_id),
             ).fetchone()
@@ -361,12 +367,15 @@ class RunStore(PredictionStore):
             rows = connection.execute(
                 "SELECT rc.case_id, rc.status, rc.error, rc.elapsed_ms, rc.score_json, "
                 "c.question, c.reference_answer, c.reference_chunks_json, "
-                "p.answer, p.contexts_json, p.latency_ms "
+                "p.answer, p.contexts_json, p.latency_ms, pa.attempts_json, "
+                "pa.usage_json, pa.elapsed_ms AS target_elapsed_ms "
                 "FROM run_cases rc JOIN evaluation_runs r ON r.id = rc.run_id "
                 "JOIN prediction_batches b ON b.id = r.batch_id "
                 "JOIN evaluation_cases c ON c.version_id = b.dataset_version_id "
                 "AND c.case_id = rc.case_id "
                 "LEFT JOIN predictions p ON p.batch_id = b.id AND p.case_id = rc.case_id "
+                "LEFT JOIN prediction_attempts pa ON pa.batch_id = b.id "
+                "AND pa.case_id = rc.case_id "
                 f"{where} ORDER BY rc.position LIMIT ? OFFSET ?",
                 (*parameters, limit, offset),
             ).fetchall()
@@ -389,7 +398,15 @@ class RunStore(PredictionStore):
                     else None,
                     "answer": row["answer"],
                     "contexts": json.loads(row["contexts_json"]) if row["contexts_json"] else None,
-                    "target_latency_ms": row["latency_ms"],
+                    "target_latency_ms": row["target_elapsed_ms"]
+                    if row["target_elapsed_ms"] is not None
+                    else row["latency_ms"],
+                    "target_attempts": json.loads(row["attempts_json"])
+                    if row["attempts_json"] is not None
+                    else None,
+                    "target_usage": json.loads(row["usage_json"])
+                    if row["usage_json"] is not None
+                    else None,
                 }
                 for row in rows
             ],

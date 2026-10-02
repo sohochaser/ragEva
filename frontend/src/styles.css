@@ -212,11 +212,37 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .run-timing, .run-score-strip { display: flex; flex-wrap: wrap; gap: 18px; padding: 13px 0; border-top: 1px solid #e6ebe9; color: #4a665d; font-size: 12px; }
 .run-evidence { padding-top: 18px; border-top: 1px solid #e6ebe9; }
 .evidence-meta { overflow-wrap: anywhere; color: #70817d; font-size: 11px; }
+.run-attempts { padding: 15px 0; border-top: 1px solid #e6ebe9; }
+.run-attempts h4 { margin-bottom: 8px; }
+.run-attempts p { margin: 5px 0; color: #687875; font-size: 11px; }
+
+.target-create { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(210px, 2fr) minmax(140px, 1fr) 96px 72px auto; gap: 11px; align-items: end; padding-top: 22px; }
+.target-create .primary-button { white-space: nowrap; }
+.target-layout { min-height: 370px; }
+.target-layout .dataset-row span { overflow-wrap: anywhere; }
+.target-auth { color: #4a665d; font-size: 12px; white-space: nowrap; }
+.target-probe, .target-collection { padding: 22px 24px; border-bottom: 1px solid #e3e9e7; }
+.target-probe-fields, .target-collection-fields { display: grid; grid-template-columns: minmax(110px, .6fr) minmax(170px, 2fr) auto; gap: 11px; align-items: end; }
+.target-collection-fields { grid-template-columns: minmax(140px, 1.4fr) 90px minmax(130px, 1fr) auto; }
+.target-success { color: #197f59; font-size: 12px; }
+.target-jobs { margin-top: 28px; }
+.target-job-list { display: flex; gap: 0; overflow-x: auto; border: 1px solid #dce3e2; border-bottom: 0; border-radius: 5px 5px 0 0; background: #fff; }
+.target-job-row { display: flex; flex-direction: column; gap: 6px; width: 175px; min-width: 175px; padding: 13px 16px; border: 0; border-right: 1px solid #e3e9e7; background: transparent; text-align: left; cursor: pointer; }
+.target-job-row.active { background: #e6f2ef; box-shadow: inset 0 -3px #188373; }
+.target-job-row strong { overflow-wrap: anywhere; font-size: 12px; }
+.target-job-row span { color: #6a7b77; font-size: 11px; }
+.target-job-detail { padding: 19px 21px; border: 1px solid #dce3e2; background: #fff; }
+.target-job-detail p, .target-job-detail code { overflow-wrap: anywhere; font-size: 12px; }
+.target-job-case { display: grid; grid-template-columns: minmax(80px, 1fr) 80px minmax(100px, 1fr) 85px; gap: 12px; padding: 10px 0; border-top: 1px solid #edf1ef; font-size: 12px; }
+.target-job-case span { overflow-wrap: anywhere; }
+.target-job-case small { color: #6a7b77; }
 
 @media (max-width: 1200px) {
   .run-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .run-metrics { grid-column: 1 / -1; }
   .run-case-workspace { grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); }
+  .target-create { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .target-collection-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .matching-controls { grid-template-columns: minmax(0, 1fr) minmax(100px, .35fr); }
   .matching-controls .form-group:nth-child(3) { grid-column: 1 / -1; }
   .matching-controls .primary-button { justify-self: end; }
@@ -257,6 +283,11 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .run-answer-grid > div + div { margin-top: 22px; }
   .run-actions { justify-content: flex-end; }
   .dataset-toolbar { flex-wrap: wrap; }
+  .target-create, .target-probe-fields, .target-collection-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .target-create .form-group:nth-child(2), .target-probe-fields .form-group:nth-child(2) { grid-column: 1 / -1; }
+  .target-probe, .target-collection { padding: 20px 17px; }
+  .target-job-case { grid-template-columns: minmax(0, 1fr) auto; }
+  .target-job-case span:nth-child(3) { grid-column: 1 / -1; }
 }
 
 @media (max-width: 390px) {

@@ -14,3 +14,10 @@ def score_run_task(run_id: str) -> None:
     from backend.worker.run_processor import process_run
 
     process_run(run_id, settings.data_dir)
+
+
+@huey.task()
+def collect_target_task(job_id: str) -> None:
+    from backend.worker.target_collector import collect_target_job
+
+    collect_target_job(job_id, settings.data_dir)

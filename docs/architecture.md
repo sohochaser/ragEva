@@ -14,6 +14,8 @@ US-004 已落地的运行边界：`backend/adapters/run_store.py` 在 SQLite 中
 
 US-007 已落地的结果边界：运行聚合保存三项检索指标的均值与分布；逐题 API 支持状态筛选，CSV/JSON 导出从同一运行快照和逐题存储生成。React 运行页显示总体指标、逐题原文和匹配证据，空有效集显示不适用。
 
+US-008 已落地的目标边界：`backend/adapters/http_target.py` 以通用 POST JSON 契约采集并校验结果，按尝试保存状态、耗时与可选 usage；`backend/adapters/target_store.py` 保存目标非敏感配置、采集任务及逐题结果，Bearer Token 单独放在仅本机可读的文件。Huey Worker 最多同时发出 4 个目标请求，完成后创建不可变预测批次。HTTP 失败记录在批次的尝试表，检索运行继承原始失败原因。React 目标页提供连接测试、数据集版本选择、采集启动及进度查看。
+
 ```text
 React + TypeScript
     |

@@ -32,6 +32,15 @@ CREATE TABLE IF NOT EXISTS predictions (
     PRIMARY KEY(batch_id, case_id),
     UNIQUE(batch_id, position)
 );
+CREATE TABLE IF NOT EXISTS prediction_attempts (
+    batch_id TEXT NOT NULL REFERENCES prediction_batches(id),
+    case_id TEXT NOT NULL,
+    error TEXT,
+    attempts_json TEXT NOT NULL,
+    usage_json TEXT,
+    elapsed_ms REAL,
+    PRIMARY KEY(batch_id, case_id)
+);
 """
 
 
