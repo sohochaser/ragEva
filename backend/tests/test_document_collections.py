@@ -3,8 +3,11 @@ import sqlite3
 from hashlib import sha256
 from pathlib import Path
 
+from docx import Document
 from fastapi.testclient import TestClient
 from httpx import Response
+from pypdf import PdfWriter
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from backend.api.main import create_app
 from backend.config import Settings
@@ -30,6 +33,42 @@ def upload(
         data=data,
         files=[("files", (name, io.BytesIO(content))) for name, content in files],
     )
+
+
+def docx_file() -> bytes:
+    document = Document()
+    document.add_paragraph("First paragraph")
+    table = document.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = "Left"
+    table.cell(0, 1).text = "Right"
+    document.add_paragraph("Last paragraph")
+    output = io.BytesIO()
+    document.save(output)
+    return output.getvalue()
+
+
+def pdf_file(*, text: str | None = None, protected: bool = False) -> bytes:
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=300, height=300)
+    if text is not None:
+        font = DictionaryObject(
+            {
+                NameObject("/Type"): NameObject("/Font"),
+                NameObject("/Subtype"): NameObject("/Type1"),
+                NameObject("/BaseFont"): NameObject("/Helvetica"),
+            }
+        )
+        page[NameObject("/Resources")] = DictionaryObject(
+            {NameObject("/Font"): DictionaryObject({NameObject("/F1"): writer._add_object(font)})}
+        )
+        stream = DecodedStreamObject()
+        stream.set_data(f"BT /F1 12 Tf 72 250 Td ({text}) Tj ET".encode("ascii"))
+        page[NameObject("/Contents")] = writer._add_object(stream)
+    if protected:
+        writer.encrypt("secret")
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
 
 
 def test_upload_preserves_bytes_ids_checksum_and_ordered_chunks(tmp_path: Path) -> None:
@@ -89,7 +128,7 @@ def test_ids_empty_files_formats_and_chunk_settings_are_rejected(tmp_path: Path)
         ([("a.txt", b"a"), ("b.txt", b"b")], '["same", "same"]', 4, 1, "duplicate_document_id"),
         ([("a.txt", b"a")], '[""]', 4, 1, "empty_document_id"),
         ([("a.txt", b"")], None, 4, 1, "empty_file"),
-        ([("a.pdf", b"content")], None, 4, 1, "unsupported_format"),
+        ([("a.bin", b"content")], None, 4, 1, "unsupported_format"),
         ([("a.txt", b"content")], None, 4, 4, "invalid_chunk_overlap"),
         ([("a.txt", b"content")], None, 0, 0, "invalid_chunk_size"),
     ]
@@ -106,3 +145,47 @@ def test_snapshot_does_not_change_after_new_upload(tmp_path: Path) -> None:
     second = upload(api, [("a.txt", b"new text")], chunk_size=6, chunk_overlap=0).json()
     assert first["id"] != second["id"]
     assert api.get(f"/api/v1/document-collections/{first['id']}").json() == first
+
+
+def test_docx_and_text_pdf_extract_in_order_but_keep_original_bytes(tmp_path: Path) -> None:
+    api = client(tmp_path)
+    originals = [("report.docx", docx_file()), ("brief.pdf", pdf_file(text="PDF evidence"))]
+    response = upload(api, originals, chunk_size=1000, chunk_overlap=0)
+    assert response.status_code == 201
+    detail = response.json()
+    documents = detail["documents"]
+    assert [document["document_id"] for document in documents] == ["report-1", "brief-1"]
+    assert documents[0]["chunks"][0]["text"] == ("First paragraph\nLeft\tRight\nLast paragraph")
+    assert documents[1]["chunks"][0]["text"] == "PDF evidence"
+    with sqlite3.connect(tmp_path / "rageva.sqlite3") as connection:
+        stored = connection.execute(
+            "SELECT filename, content, checksum FROM source_documents ORDER BY position"
+        ).fetchall()
+    for index, (filename, content, checksum) in enumerate(stored):
+        assert filename == originals[index][0]
+        assert content == originals[index][1]
+        assert checksum == sha256(originals[index][1]).hexdigest()
+    assert api.get(f"/api/v1/document-collections/{detail['id']}").json() == detail
+
+
+def test_invalid_binary_files_reject_the_entire_collection(tmp_path: Path) -> None:
+    api = client(tmp_path)
+    bad_files = [
+        ("broken.docx", b"not a DOCX", "invalid_docx"),
+        ("broken.pdf", b"not a PDF", "invalid_pdf"),
+        ("scan.pdf", pdf_file(), "no_extractable_text"),
+        ("locked.pdf", pdf_file(text="secret", protected=True), "protected_pdf"),
+    ]
+    for filename, content, code in bad_files:
+        response = upload(api, [("valid.txt", b"valid"), (filename, content)])
+        assert response.status_code == 422
+        issues = response.json()["issues"]
+        assert len(issues) == 1
+        assert issues[0]["file_index"] == 1
+        assert issues[0]["filename"] == filename
+        assert issues[0]["field"] == "file"
+        assert issues[0]["code"] == code
+        assert issues[0]["message"]
+    assert api.get("/api/v1/document-collections").json() == []
+    with sqlite3.connect(tmp_path / "rageva.sqlite3") as connection:
+        assert connection.execute("SELECT COUNT(*) FROM source_documents").fetchone()[0] == 0

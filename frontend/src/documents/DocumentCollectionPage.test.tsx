@@ -32,4 +32,30 @@ describe('DocumentCollectionPage', () => {
     await waitFor(() => expect(within(dialog).getByRole('alert').textContent).toContain('broken.txt（文件 1） · file：文件必须使用 UTF-8 编码'))
     expect(screen.getByRole('dialog', { name: '上传原文' })).toBeTruthy()
   })
+
+  it('accepts PDF uploads and shows a file-level extraction error', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/v1/document-collections') {
+        if (fetchMock.mock.calls.length === 1) return Promise.resolve(new Response('[]'))
+        return Promise.resolve(new Response(JSON.stringify({
+          error: 'validation_failed',
+          issues: [{ file_index: 0, filename: 'scan.pdf', field: 'file', code: 'no_extractable_text', message: '文件没有可提取文本' }],
+        }), { status: 422 }))
+      }
+      return Promise.reject(new Error('unexpected URL'))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+    render(<DocumentCollectionPage />)
+    await screen.findByText('暂无文档集合')
+    await user.click(screen.getByRole('button', { name: '上传原文' }))
+    const dialog = screen.getByRole('dialog', { name: '上传原文' })
+    await user.type(within(dialog).getByRole('textbox', { name: '集合名称' }), 'PDF 集合')
+    const input = within(dialog).getByLabelText('原文文件') as HTMLInputElement
+    expect(input.accept).toContain('.docx')
+    expect(input.accept).toContain('.pdf')
+    await user.upload(input, new File(['PDF'], 'scan.pdf', { type: 'application/pdf' }))
+    fireEvent.submit(dialog.querySelector('form')!)
+    await waitFor(() => expect(within(dialog).getByRole('alert').textContent).toContain('scan.pdf（文件 1） · file：文件没有可提取文本'))
+  })
 })

@@ -26,6 +26,8 @@ US-009 扩展目标协议为 SSE：`backend/adapters/sse_target.py` 使用 `http
 
 US-013 的文档集合使用 `backend/domain/document_collections.py` 校验 TXT/Markdown、ID 与切块参数，`backend/adapters/document_store.py` 在一个 SQLite 事务中保存原始 BLOB、SHA-256 与有序切块。集合固定 `source_kind=original_files`、字符切块大小和重叠量；存储结构预留 `chunks_only` 来源及无原始文件的文档记录，由 US-015 接入。管理 API 提供创建、列表和详情，React 文档集合页可核对快照。原始字节仅存于业务库，独立下载入口由 US-016 实现。
 
+US-014 的 `backend/adapters/document_text.py` 使用 python-docx 提取 DOCX 的正文和表格文本，使用 pypdf 提取文本 PDF 的页面内容。提取出的文本交给同一切块校验流程；扫描版和受保护 PDF、损坏文件以文件级错误拒绝，原始 BLOB 与校验值保持上传时的内容。原文下载仍由 US-016 接入。
+
 ```text
 React + TypeScript
     |

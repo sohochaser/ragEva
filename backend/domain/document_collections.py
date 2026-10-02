@@ -1,5 +1,6 @@
 """Validation and deterministic chunking for immutable source documents."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -23,11 +24,19 @@ class SourceDocument:
     chunks: tuple[str, ...]
 
 
+class DocumentTextError(Exception):
+    def __init__(self, code: str, message: str) -> None:
+        self.code = code
+        self.message = message
+        super().__init__(message)
+
+
 def validate_documents(
     uploads: list[tuple[str, bytes]],
     document_ids: list[str | None] | None,
     chunk_size: int,
     chunk_overlap: int,
+    extract_binary_text: Callable[[str, bytes], str] | None = None,
 ) -> tuple[list[SourceDocument], list[DocumentIssue]]:
     issues: list[DocumentIssue] = []
     if not uploads:
@@ -85,25 +94,39 @@ def validate_documents(
             )
         else:
             used_ids.add(document_id)
-        if Path(filename).suffix.lower() not in {".txt", ".md", ".markdown"}:
+        suffix = Path(filename).suffix.lower()
+        if suffix not in {".txt", ".md", ".markdown", ".docx", ".pdf"}:
             issues.append(
                 DocumentIssue(
-                    index, filename, "file", "unsupported_format", "仅支持 TXT 或 Markdown 文件"
+                    index,
+                    filename,
+                    "file",
+                    "unsupported_format",
+                    "仅支持 TXT、Markdown、DOCX 或文本 PDF",
                 )
             )
             continue
         if not content:
             issues.append(DocumentIssue(index, filename, "file", "empty_file", "文件不能为空"))
             continue
-        try:
-            text = content.decode("utf-8-sig")
-        except UnicodeDecodeError:
-            issues.append(
-                DocumentIssue(
-                    index, filename, "file", "invalid_encoding", "文件必须使用 UTF-8 编码"
+        if suffix in {".docx", ".pdf"}:
+            if extract_binary_text is None:
+                raise ValueError("binary text extractor is required for DOCX/PDF")
+            try:
+                text = extract_binary_text(filename, content)
+            except DocumentTextError as exc:
+                issues.append(DocumentIssue(index, filename, "file", exc.code, exc.message))
+                continue
+        else:
+            try:
+                text = content.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                issues.append(
+                    DocumentIssue(
+                        index, filename, "file", "invalid_encoding", "文件必须使用 UTF-8 编码"
+                    )
                 )
-            )
-            continue
+                continue
         if not text.strip():
             issues.append(DocumentIssue(index, filename, "file", "empty_file", "文件没有可用文本"))
             continue
