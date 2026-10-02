@@ -54,6 +54,7 @@ make check
 - [开发与验收流程](docs/workflow.md)
 - [阶段计划](docs/plan.md)
 - [编号用户故事与验收清单](docs/stories.md)
+- [自动化测试案例说明](docs/automated-test-cases.md)
 - [金标准数据集导入格式](docs/dataset-format.md)
 - [预测文件导入格式](docs/prediction-format.md)
 - [本地向量匹配预览](docs/local-matching.md)
