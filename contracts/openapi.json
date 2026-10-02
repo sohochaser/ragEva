@@ -116,6 +116,46 @@
         "title": "Body_import_predictions_api_v1_predictions_import_post",
         "type": "object"
       },
+      "CandidateResponse": {
+        "properties": {
+          "candidate": {
+            "title": "Candidate",
+            "type": "boolean"
+          },
+          "predicted_index": {
+            "title": "Predicted Index",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reference_index": {
+            "title": "Reference Index",
+            "type": "integer"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity"
+          }
+        },
+        "required": [
+          "reference_index",
+          "predicted_index",
+          "similarity",
+          "candidate",
+          "reason"
+        ],
+        "title": "CandidateResponse",
+        "type": "object"
+      },
       "CaseResponse": {
         "properties": {
           "case_id": {
@@ -159,6 +199,26 @@
           "reference_chunks"
         ],
         "title": "CaseResponse",
+        "type": "object"
+      },
+      "ChunkInput": {
+        "properties": {
+          "document_id": {
+            "minLength": 1,
+            "title": "Document Id",
+            "type": "string"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "document_id"
+        ],
+        "title": "ChunkInput",
         "type": "object"
       },
       "DatasetSummary": {
@@ -529,6 +589,89 @@
         "title": "PredictionResponse",
         "type": "object"
       },
+      "PreviewRequest": {
+        "properties": {
+          "model_name": {
+            "default": "BAAI/bge-small-zh-v1.5",
+            "minLength": 1,
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Path"
+          },
+          "offline": {
+            "default": false,
+            "title": "Offline",
+            "type": "boolean"
+          },
+          "predicted_chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkInput"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Predicted Chunks",
+            "type": "array"
+          },
+          "reference_chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkInput"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Reference Chunks",
+            "type": "array"
+          },
+          "threshold": {
+            "default": 0.8,
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "reference_chunks",
+          "predicted_chunks"
+        ],
+        "title": "PreviewRequest",
+        "type": "object"
+      },
+      "PreviewResponse": {
+        "properties": {
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateResponse"
+            },
+            "title": "Pairs",
+            "type": "array"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "model_id",
+          "threshold",
+          "pairs"
+        ],
+        "title": "PreviewResponse",
+        "type": "object"
+      },
       "ReferenceChunkResponse": {
         "properties": {
           "document_id": {
@@ -880,6 +1023,66 @@
         ]
       }
     },
+    "/api/v1/datasets/{dataset_id}/versions/{version}/cases/{case_id}": {
+      "get": {
+        "operationId": "get_case_api_v1_datasets__dataset_id__versions__version__cases__case_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Case",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "live_api_v1_health_live_get",
@@ -929,6 +1132,47 @@
         "summary": "Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/matching/preview": {
+      "post": {
+        "operationId": "preview_api_v1_matching_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview",
+        "tags": [
+          "matching"
         ]
       }
     },

@@ -34,6 +34,11 @@ export async function fetchVersion(datasetId: string, version: number, offset = 
   return readJson<VersionDetail>(await fetch(url))
 }
 
+export async function fetchCase(datasetId: string, version: number, caseId: string): Promise<EvaluationCase> {
+  const url = `/api/v1/datasets/${encodeURIComponent(datasetId)}/versions/${version}/cases/${encodeURIComponent(caseId)}`
+  return readJson<EvaluationCase>(await fetch(url))
+}
+
 export async function importDataset(args: {
   file: File
   datasetName?: string

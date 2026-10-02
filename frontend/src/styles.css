@@ -151,11 +151,31 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .mapping-fields p { margin: 5px 0 12px; color: #7a8985; font-size: 11px; }
 .mapping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, .35fr); gap: 12px; }
+.matching-preview { padding: 23px 27px 30px; border-top: 1px solid #e3e9e7; }
+.matching-controls { display: grid; grid-template-columns: minmax(160px, 1.5fr) minmax(95px, .5fr) minmax(160px, 1.3fr) auto auto; align-items: end; gap: 11px; }
+.matching-controls .form-group input { min-width: 0; }
+.matching-controls .primary-button { white-space: nowrap; }
+.offline-option { display: flex; align-items: center; gap: 6px; min-height: 36px; color: #455a53; font-size: 12px; white-space: nowrap; }
+.offline-option input { accent-color: #187666; }
+.preview-empty { margin: 18px 0 0; color: #75847f; font-size: 12px; }
+.preview-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 23px; }
+.preview-meta code { overflow-wrap: anywhere; color: #687a75; font-size: 11px; }
+.match-table-wrap { max-height: 320px; margin-top: 12px; overflow: auto; border: 1px solid #e4ebe8; border-radius: 4px; }
+.match-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+.match-table th, .match-table td { padding: 10px 13px; border-bottom: 1px solid #edf1ef; }
+.match-table th { position: sticky; top: 0; background: #f7faf9; color: #62746e; font-weight: 650; }
+.match-positive { color: #147866; font-weight: 700; }
 .import-issues { max-height: 180px; overflow: auto; padding: 12px; border: 1px solid #e9c8c4; border-radius: 4px; background: #fff7f6; color: #9c3b34; font-size: 12px; }
 .import-issues ul { margin: 8px 0 0; padding-left: 18px; }
 .import-issues li + li { margin-top: 5px; }
 .form-error { margin: 0; color: #a63e35; font-size: 12px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 5px; }
+
+@media (max-width: 1200px) {
+  .matching-controls { grid-template-columns: minmax(0, 1fr) minmax(100px, .35fr); }
+  .matching-controls .form-group:nth-child(3) { grid-column: 1 / -1; }
+  .matching-controls .primary-button { justify-self: end; }
+}
 
 @media (max-width: 640px) {
   .app-shell { display: block; }
@@ -178,6 +198,10 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .batch-counts span { font-size: 11px; }
   .dialog-heading { padding: 20px 20px 15px; }
   .import-dialog form { padding: 20px; }
+  .matching-preview { padding: 22px 18px; }
+  .matching-controls { grid-template-columns: minmax(0, 1fr) 105px; }
+  .matching-controls .form-group:nth-child(3) { grid-column: 1 / -1; }
+  .matching-controls .primary-button { justify-self: end; }
 }
 
 @media (max-width: 390px) {

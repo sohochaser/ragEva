@@ -7,6 +7,7 @@ import {
   type EvaluationType, type Prediction, type PredictionBatchDetail, type PredictionBatchSummary,
   type PredictionMapping,
 } from '../api/predictions'
+import { MatchingPreview } from './MatchingPreview'
 
 const fieldLabels = {
   case_id: '样本 ID', question: '问题', reference_answer: '标准答案',
@@ -146,6 +147,7 @@ export function PredictionPage() {
       <aside className="dataset-list" aria-label="预测批次列表"><div className="pane-heading"><h2>批次</h2><span>{batches.length}</span></div>{batches.map((batch) => <button key={batch.id} type="button" className={`dataset-row ${selectedId === batch.id ? 'active' : ''}`} onClick={() => { setSelectedId(batch.id); setOffset(0); setDetail(null) }}><strong>{batch.source_filename}</strong><span>{datasetName(batch.dataset_id)} · v{batch.dataset_version}</span></button>)}</aside>
       <div className="dataset-workspace"><div className="dataset-toolbar"><div><h2>{selected?.source_filename}</h2><span>{selected && `${datasetName(selected.dataset_id)} · v${selected.dataset_version} · ${typeLabels[selected.evaluation_type]}`}</span></div><div className="batch-counts"><span>匹配 {selected?.matched_count ?? 0}</span><span>未匹配 {selected?.missing_case_count ?? 0}</span></div></div>
         <div className="case-workspace"><section className="case-list" aria-label="预测列表"><div className="pane-heading"><h3>预测</h3><span>{detail?.record_count ?? 0}</span></div>{detail?.predictions.map((item) => <button key={item.case_id} type="button" className={`case-row ${caseId === item.case_id ? 'active' : ''}`} onClick={() => setCaseId(item.case_id)}><code>{item.case_id}</code><strong>{item.answer ?? `${item.contexts?.length ?? 0} 个 chunk`}</strong></button>)}{detail && detail.record_count > detail.limit && <div className="pagination"><button type="button" title="上一页" aria-label="上一页" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - detail.limit))}><ChevronLeft size={16} /></button><span>{Math.floor(offset / detail.limit) + 1} / {Math.ceil(detail.record_count / detail.limit)}</span><button type="button" title="下一页" aria-label="下一页" disabled={offset + detail.limit >= detail.record_count} onClick={() => setOffset(offset + detail.limit)}><ChevronRight size={16} /></button></div>}</section>{prediction ? <PredictionDetail prediction={prediction} /> : <div className="case-detail empty-detail">加载预测中</div>}</div>
+        {selected && prediction && <MatchingPreview key={`${selected.id}-${prediction.case_id}`} datasetId={selected.dataset_id} version={selected.dataset_version} prediction={prediction} />}
       </div>
     </div>}
     {showImport && <ImportDialog datasets={datasets} onClose={() => setShowImport(false)} onImported={(batch) => void imported(batch)} />}

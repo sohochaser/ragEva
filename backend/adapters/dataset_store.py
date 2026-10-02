@@ -184,3 +184,22 @@ class DatasetStore:
                 for case in cases
             ],
         }
+
+    def get_case(self, dataset_id: str, version: int, case_id: str) -> dict[str, Any]:
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT c.case_id, c.question, c.reference_answer, c.reference_chunks_json "
+                "FROM evaluation_cases c JOIN dataset_versions v ON v.id = c.version_id "
+                "WHERE v.dataset_id = ? AND v.version = ? AND c.case_id = ?",
+                (dataset_id, version, case_id),
+            ).fetchone()
+            if row is None:
+                raise DatasetNotFound(dataset_id)
+        return {
+            "case_id": row["case_id"],
+            "question": row["question"],
+            "reference_answer": row["reference_answer"],
+            "reference_chunks": json.loads(row["reference_chunks_json"])
+            if row["reference_chunks_json"] is not None
+            else None,
+        }

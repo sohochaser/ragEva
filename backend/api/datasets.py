@@ -141,4 +141,11 @@ def create_dataset_router(settings: Settings) -> APIRouter:
         except DatasetNotFound as exc:
             raise HTTPException(status_code=404, detail="数据集版本不存在") from exc
 
+    @router.get("/{dataset_id}/versions/{version}/cases/{case_id}", response_model=CaseResponse)
+    def get_case(dataset_id: str, version: int, case_id: str) -> CaseResponse:
+        try:
+            return CaseResponse(**store.get_case(dataset_id, version, case_id))
+        except DatasetNotFound as exc:
+            raise HTTPException(status_code=404, detail="样本不存在") from exc
+
     return router

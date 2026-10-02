@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/datasets/{dataset_id}/versions/{version}/cases/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Case */
+        get: operations["get_case_api_v1_datasets__dataset_id__versions__version__cases__case_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -100,6 +117,23 @@ export interface paths {
         get: operations["ready_api_v1_health_ready_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matching/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_api_v1_matching_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -190,6 +224,19 @@ export interface components {
             /** Mapping */
             mapping?: string | null;
         };
+        /** CandidateResponse */
+        CandidateResponse: {
+            /** Candidate */
+            candidate: boolean;
+            /** Predicted Index */
+            predicted_index: number;
+            /** Reason */
+            reason: string;
+            /** Reference Index */
+            reference_index: number;
+            /** Similarity */
+            similarity: number | null;
+        };
         /** CaseResponse */
         CaseResponse: {
             /** Case Id */
@@ -200,6 +247,13 @@ export interface components {
             reference_answer: string | null;
             /** Reference Chunks */
             reference_chunks: components["schemas"]["ReferenceChunkResponse"][] | null;
+        };
+        /** ChunkInput */
+        ChunkInput: {
+            /** Document Id */
+            document_id: string;
+            /** Text */
+            text: string;
         };
         /** DatasetSummary */
         DatasetSummary: {
@@ -327,6 +381,39 @@ export interface components {
             contexts: components["schemas"]["PredictedChunkResponse"][] | null;
             /** Latency Ms */
             latency_ms: number | null;
+        };
+        /** PreviewRequest */
+        PreviewRequest: {
+            /**
+             * Model Name
+             * @default BAAI/bge-small-zh-v1.5
+             */
+            model_name: string;
+            /** Model Path */
+            model_path?: string | null;
+            /**
+             * Offline
+             * @default false
+             */
+            offline: boolean;
+            /** Predicted Chunks */
+            predicted_chunks: components["schemas"]["ChunkInput"][];
+            /** Reference Chunks */
+            reference_chunks: components["schemas"]["ChunkInput"][];
+            /**
+             * Threshold
+             * @default 0.8
+             */
+            threshold: number;
+        };
+        /** PreviewResponse */
+        PreviewResponse: {
+            /** Model Id */
+            model_id: string;
+            /** Pairs */
+            pairs: components["schemas"]["CandidateResponse"][];
+            /** Threshold */
+            threshold: number;
         };
         /** ReferenceChunkResponse */
         ReferenceChunkResponse: {
@@ -514,6 +601,39 @@ export interface operations {
             };
         };
     };
+    get_case_api_v1_datasets__dataset_id__versions__version__cases__case_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                version: number;
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     live_api_v1_health_live_get: {
         parameters: {
             query?: never;
@@ -559,6 +679,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    preview_api_v1_matching_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

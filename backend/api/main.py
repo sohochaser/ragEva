@@ -6,6 +6,7 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 from backend.api.datasets import create_dataset_router
+from backend.api.matching import create_matching_router
 from backend.api.predictions import create_prediction_router
 from backend.config import Settings
 from backend.health import worker_is_ready
@@ -21,6 +22,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application = FastAPI(title="ragEva API", version="0.1.0")
     application.include_router(create_dataset_router(config))
     application.include_router(create_prediction_router(config))
+    application.include_router(create_matching_router(config))
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live() -> HealthResponse:
