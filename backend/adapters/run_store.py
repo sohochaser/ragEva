@@ -38,6 +38,22 @@ CREATE TABLE IF NOT EXISTS run_cases (
     PRIMARY KEY (run_id, case_id),
     UNIQUE (run_id, position)
 );
+CREATE TABLE IF NOT EXISTS run_answer_metrics (
+    run_id TEXT NOT NULL REFERENCES evaluation_runs(id),
+    case_id TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    status TEXT NOT NULL,
+    score REAL,
+    reason TEXT,
+    raw_response TEXT,
+    error TEXT,
+    usage_json TEXT,
+    model_name TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    criteria TEXT NOT NULL,
+    PRIMARY KEY (run_id, case_id, metric),
+    FOREIGN KEY (run_id, case_id) REFERENCES run_cases(run_id, case_id)
+);
 """
 
 
@@ -70,6 +86,8 @@ class RunStore(PredictionStore):
         offline: bool,
         threshold: float,
         metrics: list[MetricKey],
+        mode: str = "retrieval",
+        answer_config: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -79,8 +97,14 @@ class RunStore(PredictionStore):
             ).fetchone()
             if batch is None:
                 raise RunNotFound(batch_id)
-            if batch["evaluation_type"] == "answer":
+            if mode not in {"retrieval", "answer", "both"}:
+                raise RunInputError("未知评测类型")
+            if mode in {"retrieval", "both"} and batch["evaluation_type"] == "answer":
                 raise RunInputError("该预测批次没有检索 chunk，不能运行检索指标")
+            if mode in {"answer", "both"} and batch["evaluation_type"] == "retrieval":
+                raise RunInputError("该预测批次没有答案，不能运行回答指标")
+            if mode in {"answer", "both"} and answer_config is None:
+                raise RunInputError("回答评测需要场景版本和评分模型")
             run_id = str(uuid4())
             config = {
                 "prediction_batch_id": batch_id,
@@ -92,6 +116,8 @@ class RunStore(PredictionStore):
                 "metrics": metrics,
                 "match_rule_version": "one-to-one-v1",
                 "gain_rule_version": "ordered-linear-v1",
+                "mode": mode,
+                "answer": answer_config,
             }
             connection.execute(
                 "INSERT INTO evaluation_runs "
@@ -225,6 +251,32 @@ class RunStore(PredictionStore):
             ).rowcount
         return changed == 1
 
+    def record_answer_metric(
+        self, run_id: str, case_id: str, metric: str, result: dict[str, Any]
+    ) -> None:
+        with closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT OR REPLACE INTO run_answer_metrics "
+                "(run_id, case_id, metric, status, score, reason, raw_response, error, "
+                "usage_json, model_name, prompt_version, criteria) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    run_id,
+                    case_id,
+                    metric,
+                    result["status"],
+                    result.get("score"),
+                    result.get("reason"),
+                    result.get("raw_response"),
+                    result.get("error"),
+                    json.dumps(result["usage"]) if result.get("usage") is not None else None,
+                    result["model_name"],
+                    result["prompt_version"],
+                    result["criteria"],
+                ),
+            )
+
     def fail_pending(self, run_id: str, error: str) -> None:
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -264,17 +316,66 @@ class RunStore(PredictionStore):
             rows = connection.execute(
                 "SELECT status, score_json FROM run_cases WHERE run_id = ?", (run_id,)
             ).fetchall()
+            config = json.loads(
+                connection.execute(
+                    "SELECT config_json FROM evaluation_runs WHERE id = ?", (run_id,)
+                ).fetchone()["config_json"]
+            )
             successful = [
                 score_from_dict(json.loads(row["score_json"]))
                 for row in rows
                 if row["status"] == "success" and row["score_json"]
             ]
-            not_applicable = sum(row["status"] == "not_applicable" for row in rows)
+            not_applicable = (
+                sum(row["status"] == "not_applicable" for row in rows)
+                if config.get("mode", "retrieval") != "answer"
+                else 0
+            )
+            if config.get("mode") == "both":
+                not_applicable = connection.execute(
+                    "SELECT COUNT(*) FROM run_cases rc "
+                    "JOIN evaluation_runs r ON r.id = rc.run_id "
+                    "JOIN prediction_batches b ON b.id = r.batch_id "
+                    "JOIN evaluation_cases c ON c.version_id = b.dataset_version_id "
+                    "AND c.case_id = rc.case_id "
+                    "WHERE rc.run_id = ? AND rc.status IN ('success', 'not_applicable') "
+                    "AND c.reference_chunks_json IS NULL",
+                    (run_id,),
+                ).fetchone()[0]
             aggregate = aggregate_retrieval(successful + [None] * not_applicable)
+            aggregate_data = asdict(aggregate)
+            aggregate_data["answer_metrics"] = {}
+            if config.get("mode") in {"answer", "both"}:
+                metric_rows = connection.execute(
+                    "SELECT metric, status, score FROM run_answer_metrics WHERE run_id = ?",
+                    (run_id,),
+                ).fetchall()
+                answer_metrics = {}
+                for metric in ("faithfulness", "relevance", "correctness"):
+                    selected = [row for row in metric_rows if row["metric"] == metric]
+                    scores = [row["score"] for row in selected if row["status"] == "success"]
+                    answer_metrics[metric] = {
+                        "valid_count": len(scores),
+                        "failed_count": sum(row["status"] == "failed" for row in selected),
+                        "not_applicable_count": sum(
+                            row["status"] == "not_applicable" for row in selected
+                        ),
+                        "mean_score": sum(scores) / len(scores) if scores else None,
+                    }
+                aggregate_data["answer_metrics"] = answer_metrics
+                if any(row["status"] == "failed" for row in metric_rows) and status != "cancelled":
+                    status = "failed"
+                if config.get("mode") == "both" and status != "cancelled":
+                    retrieval_errors = connection.execute(
+                        "SELECT COUNT(*) FROM run_cases WHERE run_id = ? AND error IS NOT NULL",
+                        (run_id,),
+                    ).fetchone()[0]
+                    if retrieval_errors:
+                        status = "failed"
             connection.execute(
                 "UPDATE evaluation_runs SET status = ?, aggregate_json = ?, finished_at = ? "
                 "WHERE id = ?",
-                (status, json.dumps(asdict(aggregate)), _now(), run_id),
+                (status, json.dumps(aggregate_data), _now(), run_id),
             )
 
     def cancel(self, run_id: str) -> dict[str, Any]:
@@ -379,6 +480,30 @@ class RunStore(PredictionStore):
                 f"{where} ORDER BY rc.position LIMIT ? OFFSET ?",
                 (*parameters, limit, offset),
             ).fetchall()
+            metric_rows = connection.execute(
+                "SELECT case_id, metric, status, score, reason, raw_response, error, "
+                "usage_json, model_name, prompt_version, criteria FROM run_answer_metrics "
+                "WHERE run_id = ?",
+                (run_id,),
+            ).fetchall()
+        answer_by_case: dict[str, dict[str, Any]] = {}
+        for item in metric_rows:
+            answer_by_case.setdefault(item["case_id"], {})[item["metric"]] = {
+                **{
+                    key: item[key]
+                    for key in (
+                        "status",
+                        "score",
+                        "reason",
+                        "raw_response",
+                        "error",
+                        "model_name",
+                        "prompt_version",
+                        "criteria",
+                    )
+                },
+                "usage": json.loads(item["usage_json"]) if item["usage_json"] else None,
+            }
         return {
             "run_id": run_id,
             "total": count if status else run["total_count"],
@@ -391,6 +516,7 @@ class RunStore(PredictionStore):
                     "error": row["error"],
                     "elapsed_ms": row["elapsed_ms"],
                     "score": json.loads(row["score_json"]) if row["score_json"] else None,
+                    "answer_metrics": answer_by_case.get(row["case_id"], {}),
                     "question": row["question"],
                     "reference_answer": row["reference_answer"],
                     "reference_chunks": json.loads(row["reference_chunks_json"])

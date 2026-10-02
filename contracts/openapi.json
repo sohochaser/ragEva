@@ -1,6 +1,137 @@
 {
   "components": {
     "schemas": {
+      "AnswerAggregate": {
+        "properties": {
+          "failed_count": {
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "mean_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Score"
+          },
+          "not_applicable_count": {
+            "title": "Not Applicable Count",
+            "type": "integer"
+          },
+          "valid_count": {
+            "title": "Valid Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "valid_count",
+          "failed_count",
+          "not_applicable_count",
+          "mean_score"
+        ],
+        "title": "AnswerAggregate",
+        "type": "object"
+      },
+      "AnswerMetricResponse": {
+        "properties": {
+          "criteria": {
+            "title": "Criteria",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "raw_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Response"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "not_applicable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage"
+          }
+        },
+        "required": [
+          "status",
+          "score",
+          "reason",
+          "raw_response",
+          "error",
+          "usage",
+          "model_name",
+          "prompt_version",
+          "criteria"
+        ],
+        "title": "AnswerMetricResponse",
+        "type": "object"
+      },
       "Body_create_collection_api_v1_document_collections_post": {
         "properties": {
           "chunk_overlap": {
@@ -1610,6 +1741,13 @@
       },
       "RunAggregate": {
         "properties": {
+          "answer_metrics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnswerAggregate"
+            },
+            "title": "Answer Metrics",
+            "type": "object"
+          },
           "distribution": {
             "additionalProperties": {
               "additionalProperties": {
@@ -1696,6 +1834,13 @@
               }
             ],
             "title": "Answer"
+          },
+          "answer_metrics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnswerMetricResponse"
+            },
+            "title": "Answer Metrics",
+            "type": "object"
           },
           "case_id": {
             "title": "Case Id",
@@ -1882,6 +2027,17 @@
       },
       "RunCreate": {
         "properties": {
+          "judge_model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Model Id"
+          },
           "metrics": {
             "items": {
               "enum": [
@@ -1893,6 +2049,16 @@
             },
             "title": "Metrics",
             "type": "array"
+          },
+          "mode": {
+            "default": "retrieval",
+            "enum": [
+              "retrieval",
+              "answer",
+              "both"
+            ],
+            "title": "Mode",
+            "type": "string"
           },
           "model_name": {
             "default": "BAAI/bge-small-zh-v1.5",
@@ -1920,6 +2086,29 @@
             "minLength": 1,
             "title": "Prediction Batch Id",
             "type": "string"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scenario_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Version"
           },
           "threshold": {
             "default": 0.8,
