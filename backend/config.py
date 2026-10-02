@@ -4,6 +4,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 
 def _positive_int(name: str, raw: str, maximum: int | None = None) -> int:
@@ -41,4 +42,52 @@ class Settings:
             worker_stale_after=_positive_int(
                 "RAGEVA_WORKER_STALE_AFTER", values.get("RAGEVA_WORKER_STALE_AFTER", "8")
             ),
+        )
+
+
+@dataclass(frozen=True)
+class DownloadSettings:
+    data_dir: Path
+    token: str
+    host: str = "127.0.0.1"
+    port: int = 8001
+    public_url: str = "http://127.0.0.1:8001"
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str] | None = None) -> "DownloadSettings":
+        values = os.environ if environ is None else environ
+        token = values.get("RAGEVA_DOWNLOAD_TOKEN", "")
+        if not token.strip():
+            raise ValueError("RAGEVA_DOWNLOAD_TOKEN must not be empty")
+        host = values.get("RAGEVA_DOWNLOAD_HOST", "127.0.0.1").strip()
+        if not host:
+            raise ValueError("RAGEVA_DOWNLOAD_HOST must not be empty")
+        port = _positive_int(
+            "RAGEVA_DOWNLOAD_PORT", values.get("RAGEVA_DOWNLOAD_PORT", "8001"), 65535
+        )
+        public_url = (
+            values.get("RAGEVA_DOWNLOAD_PUBLIC_URL", f"http://127.0.0.1:{port}").strip().rstrip("/")
+        )
+        parsed = urlsplit(public_url)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("RAGEVA_DOWNLOAD_PUBLIC_URL must be an HTTP(S) base URL")
+        try:
+            _ = parsed.port
+        except ValueError as exc:
+            raise ValueError("RAGEVA_DOWNLOAD_PUBLIC_URL has an invalid port") from exc
+        public_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", ""))
+        return cls(
+            data_dir=Path(values.get("RAGEVA_DATA_DIR", ".local")).expanduser().resolve(),
+            token=token,
+            host=host,
+            port=port,
+            public_url=public_url,
         )

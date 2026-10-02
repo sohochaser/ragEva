@@ -18,7 +18,7 @@ US-008 已落地的目标边界：`backend/adapters/http_target.py` 以通用 PO
 
 US-009 扩展目标协议为 SSE：`backend/adapters/sse_target.py` 使用 `httpx-sse` 解析事件，按 `answer.delta`、`contexts`、`completed`、`error` 组装结果。仅收到 `completed` 且满足评测类型必需字段才保存成功预测；逐次尝试记录 TTFT、TTLT 与流完成耗时，断流和流内错误由有限重试处理。目标配置固定 JSON 或 SSE 模式，二者输出同一规范化预测结构。
 
-文档集合使用 `backend/domain/document_collections.py` 校验 TXT/Markdown、ID 与切块参数，`backend/adapters/document_store.py` 在一个 SQLite 事务中保存原始 BLOB、SHA-256 与有序切块。CSV/JSONL chunk 清单由 `backend/domain/chunk_manifests.py` 校验全局顺序、文档 ID、正文与重复项，同样原子保存。集合以 `source_kind` 区分 `original_files` 和 `chunks_only`；后者没有文件名、校验值、原始字节或下载 URL。管理 API 提供创建、清单导入、列表和详情，详情的 `chunks` 保留可供后续生成流程使用的全局顺序。原始字节仅存于业务库，独立下载入口由 US-016 实现。
+文档集合使用 `backend/domain/document_collections.py` 校验 TXT/Markdown、ID 与切块参数，`backend/adapters/document_store.py` 在一个 SQLite 事务中保存原始 BLOB、SHA-256 与有序切块。CSV/JSONL chunk 清单由 `backend/domain/chunk_manifests.py` 校验全局顺序、文档 ID、正文与重复项，同样原子保存。集合以 `source_kind` 区分 `original_files` 和 `chunks_only`；后者没有文件名、校验值、原始字节或下载 URL。管理 API 提供创建、清单导入、列表和详情，详情的 `chunks` 保留可供后续生成流程使用的全局顺序。`backend/download/` 作为独立 ASGI 进程读取同一业务库，只开放专用 Token 保护的清单和原文字节路由。
 
 ```text
 React + TypeScript

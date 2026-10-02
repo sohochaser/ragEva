@@ -17,7 +17,17 @@ make dev
 
 数据集页可上传 UTF-8 CSV/JSONL 金标准样本，创建数据集或导入已有数据集的新版本；支持列名映射、逐行错误提示及版本样本浏览。文件字段、参考 chunk 顺序和版本语义见[导入格式](docs/dataset-format.md)。
 
-文档集合页可批量上传 UTF-8 TXT/Markdown 原文，逐文件填写 `document_id` 或按文件名称自动编号。切块大小为 1–10000 字符，重叠量须小于切块大小。集合保存上传原始字节、SHA-256、切块配置与有序切块，并可在详情页核对；任何文件有误时整个集合不创建。也可导入 UTF-8 CSV/JSONL chunk 清单，每行包含从 0 连续递增的 `position`、`document_id` 和 `text`；这类集合保留清单全局顺序并标记无原文，不提供文件下载。DOCX/PDF 和原文下载由后续故事接入。
+文档集合页可批量上传 UTF-8 TXT/Markdown 原文，逐文件填写 `document_id` 或按文件名称自动编号。切块大小为 1–10000 字符，重叠量须小于切块大小。集合保存上传原始字节、SHA-256、切块配置与有序切块，并可在详情页核对；任何文件有误时整个集合不创建。也可导入 UTF-8 CSV/JSONL chunk 清单，每行包含从 0 连续递增的 `position`、`document_id` 和 `text`；这类集合保留清单全局顺序并标记无原文，不提供文件下载。DOCX/PDF 由后续故事接入。
+
+### 独立原文下载
+
+设置专用 Token 后，在另一个终端启动下载进程。它与管理 API 共用 `RAGEVA_DATA_DIR` 中的集合快照，但只提供清单和原始文件，不暴露管理 API。
+
+```sh
+RAGEVA_DOWNLOAD_TOKEN='<专用 Token>' uv run python -m backend.download
+```
+
+默认监听 `127.0.0.1:8001`。远程访问时配置 `RAGEVA_DOWNLOAD_HOST`（监听地址）、`RAGEVA_DOWNLOAD_PORT` 和 `RAGEVA_DOWNLOAD_PUBLIC_URL`（远程客户端可访问的 HTTP(S) 基础 URL，例如 `https://files.example.test`）；网络和 TLS 由部署环境提供。下载进程缺少 Token 时拒绝启动。持 Token 请求 `GET /download/v1/collections/{集合 ID}/manifest`，再按清单中的 `download_url` 请求文件，两次请求均需 `Authorization: Bearer <专用 Token>`。清单包含上传时固定的 `document_id`、文件名和 SHA-256；文件返回上传时的原始字节。chunk-only 集合的清单标为 `chunks_only` 且没有文件项。
 
 预测批次页可导入已有 RAG 系统的 CSV/JSONL 答案与有序检索 chunk，绑定已有数据集版本，或从同一文件同时建立金标准数据集。字段、评测类型和未匹配计数见[预测文件格式](docs/prediction-format.md)。
 
