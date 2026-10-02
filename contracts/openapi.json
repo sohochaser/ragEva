@@ -735,6 +735,169 @@
         "title": "DocumentIssueResponse",
         "type": "object"
       },
+      "DuplicateCheck": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateMatch"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "candidate_id",
+          "revision",
+          "verdict",
+          "matches",
+          "rule_version",
+          "checked_at",
+          "decision",
+          "reason",
+          "decided_at"
+        ],
+        "title": "DuplicateCheck",
+        "type": "object"
+      },
+      "DuplicateDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "check_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Check Id",
+            "type": "integer"
+          },
+          "expected_revision": {
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_id",
+          "expected_revision",
+          "reason"
+        ],
+        "title": "DuplicateDecisionRequest",
+        "type": "object"
+      },
+      "DuplicateMatch": {
+        "properties": {
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "question_similarity": {
+            "title": "Question Similarity",
+            "type": "number"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reference_answer": {
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "shared_source_count": {
+            "title": "Shared Source Count",
+            "type": "integer"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "term_similarity": {
+            "title": "Term Similarity",
+            "type": "number"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_kind",
+          "source_id",
+          "question",
+          "reference_answer",
+          "verdict",
+          "reason",
+          "shared_source_count",
+          "question_similarity",
+          "term_similarity"
+        ],
+        "title": "DuplicateMatch",
+        "type": "object"
+      },
       "EdgeDecisionResponse": {
         "properties": {
           "candidate": {
@@ -3191,6 +3354,194 @@
           }
         },
         "summary": "Review Candidate",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/duplicate-check": {
+      "get": {
+        "operationId": "get_duplicate_check_api_v1_candidates__candidate_id__duplicate_check_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DuplicateCheck"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Duplicate Check Api V1 Candidates  Candidate Id  Duplicate Check Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Duplicate Check",
+        "tags": [
+          "generations"
+        ]
+      },
+      "post": {
+        "operationId": "recheck_duplicate_api_v1_candidates__candidate_id__duplicate_check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recheck Duplicate",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/duplicate-decision": {
+      "post": {
+        "operationId": "allow_suspected_api_v1_candidates__candidate_id__duplicate_decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Allow Suspected",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/duplicate-history": {
+      "get": {
+        "operationId": "get_duplicate_history_api_v1_candidates__candidate_id__duplicate_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DuplicateCheck"
+                  },
+                  "title": "Response Get Duplicate History Api V1 Candidates  Candidate Id  Duplicate History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Duplicate History",
         "tags": [
           "generations"
         ]

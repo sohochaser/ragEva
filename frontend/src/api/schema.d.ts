@@ -22,6 +22,58 @@ export interface paths {
         patch: operations["review_candidate_api_v1_candidates__candidate_id__patch"];
         trace?: never;
     };
+    "/api/v1/candidates/{candidate_id}/duplicate-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Duplicate Check */
+        get: operations["get_duplicate_check_api_v1_candidates__candidate_id__duplicate_check_get"];
+        put?: never;
+        /** Recheck Duplicate */
+        post: operations["recheck_duplicate_api_v1_candidates__candidate_id__duplicate_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidate_id}/duplicate-decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allow Suspected */
+        post: operations["allow_suspected_api_v1_candidates__candidate_id__duplicate_decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidate_id}/duplicate-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Duplicate History */
+        get: operations["get_duplicate_history_api_v1_candidates__candidate_id__duplicate_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/candidates/{candidate_id}/revisions": {
         parameters: {
             query?: never;
@@ -868,6 +920,59 @@ export interface components {
             filename: string | null;
             /** Message */
             message: string;
+        };
+        /** DuplicateCheck */
+        DuplicateCheck: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Checked At */
+            checked_at: string;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decision */
+            decision: string | null;
+            /** Id */
+            id: number;
+            /** Matches */
+            matches: components["schemas"]["DuplicateMatch"][];
+            /** Reason */
+            reason: string | null;
+            /** Revision */
+            revision: number;
+            /** Rule Version */
+            rule_version: string;
+            /** Verdict */
+            verdict: string;
+        };
+        /** DuplicateDecisionRequest */
+        DuplicateDecisionRequest: {
+            /** Check Id */
+            check_id: number;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Reason */
+            reason: string;
+        };
+        /** DuplicateMatch */
+        DuplicateMatch: {
+            /** Question */
+            question: string;
+            /** Question Similarity */
+            question_similarity: number;
+            /** Reason */
+            reason: string;
+            /** Reference Answer */
+            reference_answer: string;
+            /** Shared Source Count */
+            shared_source_count: number;
+            /** Source Id */
+            source_id: string;
+            /** Source Kind */
+            source_kind: string;
+            /** Term Similarity */
+            term_similarity: number;
+            /** Verdict */
+            verdict: string;
         };
         /** EdgeDecisionResponse */
         EdgeDecisionResponse: {
@@ -1738,6 +1843,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateReviewFailure"];
+                };
+            };
+        };
+    };
+    get_duplicate_check_api_v1_candidates__candidate_id__duplicate_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateCheck"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recheck_duplicate_api_v1_candidates__candidate_id__duplicate_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateCheck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    allow_suspected_api_v1_candidates__candidate_id__duplicate_decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DuplicateDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateCheck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_duplicate_history_api_v1_candidates__candidate_id__duplicate_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateCheck"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
