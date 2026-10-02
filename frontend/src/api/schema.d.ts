@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/api/v1/candidates/{candidate_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Candidate */
+        get: operations["get_candidate_api_v1_candidates__candidate_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Review Candidate */
+        patch: operations["review_candidate_api_v1_candidates__candidate_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidate_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Candidate Revisions */
+        get: operations["get_candidate_revisions_api_v1_candidates__candidate_id__revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets": {
         parameters: {
             query?: never;
@@ -667,6 +702,55 @@ export interface components {
             /** Similarity */
             similarity: number | null;
         };
+        /** CandidateReviewFailure */
+        CandidateReviewFailure: {
+            /** Error */
+            error: string;
+            /** Issues */
+            issues: components["schemas"]["CandidateReviewIssue"][];
+        };
+        /** CandidateReviewIssue */
+        CandidateReviewIssue: {
+            /** Field */
+            field: string;
+            /** Message */
+            message: string;
+        };
+        /** CandidateReviewRequest */
+        CandidateReviewRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "save" | "approve" | "reject";
+            /** Collection Id */
+            collection_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string;
+            /** Support Positions */
+            support_positions: number[];
+        };
+        /** CandidateRevision */
+        CandidateRevision: {
+            /** Created At */
+            created_at: string;
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string;
+            /** Reference Chunks */
+            reference_chunks: components["schemas"]["CandidateChunk"][];
+            /** Revision */
+            revision: number;
+            /** Status */
+            status: string;
+            /** Support Positions */
+            support_positions: number[];
+        };
         /** CaseResponse */
         CaseResponse: {
             /** Case Id */
@@ -802,6 +886,8 @@ export interface components {
         };
         /** GeneratedCandidate */
         GeneratedCandidate: {
+            /** Collection Id */
+            collection_id: string;
             /** Created At */
             created_at: string;
             /** Id */
@@ -818,6 +904,8 @@ export interface components {
             reference_answer: string;
             /** Reference Chunks */
             reference_chunks: components["schemas"]["CandidateChunk"][];
+            /** Revision */
+            revision: number;
             /** Run Id */
             run_id: string;
             /** Slot Index */
@@ -1588,6 +1676,103 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_candidate_api_v1_candidates__candidate_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedCandidate"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_candidate_api_v1_candidates__candidate_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedCandidate"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateReviewFailure"];
+                };
+            };
+        };
+    };
+    get_candidate_revisions_api_v1_candidates__candidate_id__revisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateRevision"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_datasets_api_v1_datasets_get: {
         parameters: {
             query?: never;
