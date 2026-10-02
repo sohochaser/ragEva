@@ -141,6 +141,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/document-collections/{collection_id}/generations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_document_collections__collection_id__generations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/generations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_api_v1_generations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/generations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_api_v1_generations__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/generations/{run_id}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Candidates */
+        get: operations["get_candidates_api_v1_generations__run_id__candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -650,6 +718,13 @@ export interface components {
             /** Mapping */
             mapping?: string | null;
         };
+        /** CandidateChunk */
+        CandidateChunk: {
+            /** Document Id */
+            document_id: string;
+            /** Text */
+            text: string;
+        };
         /** CandidateResponse */
         CandidateResponse: {
             /** Candidate */
@@ -795,6 +870,97 @@ export interface components {
             selected: boolean;
             /** Similarity */
             similarity: number | null;
+        };
+        /** GeneratedCandidate */
+        GeneratedCandidate: {
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** Model Name */
+            model_name: string;
+            /** Multi Chunk */
+            multi_chunk: boolean;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string;
+            /** Reference Chunks */
+            reference_chunks: components["schemas"]["CandidateChunk"][];
+            /** Run Id */
+            run_id: string;
+            /** Slot Index */
+            slot_index: number;
+            /** Status */
+            status: string;
+            /** Support Positions */
+            support_positions: number[];
+        };
+        /** GenerationCreate */
+        GenerationCreate: {
+            /**
+             * Instructions
+             * @default
+             */
+            instructions: string;
+            /** Language */
+            language: string;
+            /** Max Calls */
+            max_calls?: number | null;
+            /**
+             * Max Concurrency
+             * @default 4
+             */
+            max_concurrency: number;
+            /** Model Id */
+            model_id: string;
+            /** Multi Chunk Ratio */
+            multi_chunk_ratio: number;
+            /** Question Type */
+            question_type: string;
+            /** Target Count */
+            target_count: number;
+        };
+        /** GenerationSummary */
+        GenerationSummary: {
+            /** Actual Count */
+            actual_count: number;
+            /** Actual Multi Count */
+            actual_multi_count: number;
+            /** Attempt Errors */
+            attempt_errors: {
+                [key: string]: number;
+            };
+            /** Attempted Count */
+            attempted_count: number;
+            /** Collection Id */
+            collection_id: string;
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
+            /** Created At */
+            created_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Max Calls */
+            max_calls: number;
+            /** Max Concurrency */
+            max_concurrency: number;
+            /** Shortfall Reasons */
+            shortfall_reasons: string[];
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Target Count */
+            target_count: number;
+            /** Target Multi Count */
+            target_multi_count: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1821,6 +1987,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_document_collections__collection_id__generations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_v1_generations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationSummary"][];
+                };
+            };
+        };
+    };
+    get_run_api_v1_generations__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_candidates_api_v1_generations__run_id__candidates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedCandidate"][];
                 };
             };
             /** @description Validation Error */

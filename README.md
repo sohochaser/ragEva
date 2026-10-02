@@ -29,6 +29,8 @@ RAGEVA_DOWNLOAD_TOKEN='<专用 Token>' uv run python -m backend.download
 
 默认监听 `127.0.0.1:8001`。远程访问时配置 `RAGEVA_DOWNLOAD_HOST`（监听地址）、`RAGEVA_DOWNLOAD_PORT` 和 `RAGEVA_DOWNLOAD_PUBLIC_URL`（远程客户端可访问的 HTTP(S) 基础 URL，例如 `https://files.example.test`）；网络和 TLS 由部署环境提供。下载进程缺少 Token 时拒绝启动。持 Token 请求 `GET /download/v1/collections/{集合 ID}/manifest`，再按清单中的 `download_url` 请求文件，两次请求均需 `Authorization: Bearer <专用 Token>`。清单包含上传时固定的 `document_id`、文件名和 SHA-256；文件返回上传时的原始字节。chunk-only 集合的清单标为 `chunks_only` 且没有文件项。
 
+候选生成页可配置独立的在线 OpenAI 兼容模型，选择任一文档集合，指定目标条数、多 chunk 比例、语言和题型，异步生成待审核候选。页面显示进度、实际/目标数量、失败与不足额原因，并保留每题引用的集合 chunk。模型 Token 单独保存在受保护的本机文件中，不进入任务快照。配额及模型输出规则见[候选生成说明](docs/generations.md)；审核与发布由后续故事接入。
+
 预测批次页可导入已有 RAG 系统的 CSV/JSONL 答案与有序检索 chunk，绑定已有数据集版本，或从同一文件同时建立金标准数据集。字段、评测类型和未匹配计数见[预测文件格式](docs/prediction-format.md)。
 
 有参考及预测 chunk 的样本可在预测批次页调用本地向量模型预览相似度与阈值判定。默认中文模型首次使用会下载权重；缓存、离线模式和模型专属阈值见[本地匹配说明](docs/local-matching.md)。
@@ -53,3 +55,4 @@ make check
 - [金标准数据集导入格式](docs/dataset-format.md)
 - [预测文件导入格式](docs/prediction-format.md)
 - [本地向量匹配预览](docs/local-matching.md)
+- [候选生成说明](docs/generations.md)

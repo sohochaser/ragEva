@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Protocol
 
 import numpy as np
-from fastembed import TextEmbedding
 
 
 class ModelUnavailable(Exception):
@@ -29,6 +28,8 @@ class FastEmbedEncoder:
             raise ModelUnavailable(f"模型目录不存在：{model_path}")
         cache_dir.mkdir(parents=True, exist_ok=True)
         try:
+            from fastembed import TextEmbedding
+
             self._model = TextEmbedding(
                 model_name=model_name,
                 cache_dir=str(cache_dir),
