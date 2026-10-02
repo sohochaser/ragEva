@@ -1,12 +1,16 @@
 import { expect, test } from '@playwright/test'
 
-const pages = ['文档集合', '候选生成', '数据集', '预测批次', 'HTTP 目标', '评价场景', '评测运行', '系统状态']
+const pages = [
+  'Document Collections（文档集合）', 'Candidate Generation（候选生成）', 'Datasets（数据集）',
+  'Prediction Batches（预测批次）', 'HTTP Targets（HTTP 目标）', 'Evaluation Scenarios（评价场景）',
+  'Evaluation Runs（评测运行）', 'System Status（系统状态）',
+]
 
 test('desktop navigation reaches every workspace', async ({ page }) => {
   await page.goto('/')
-  const nav = page.getByRole('navigation', { name: '主导航' })
+  const nav = page.getByRole('navigation', { name: /主导航/ })
   await expect(nav).toBeVisible()
-  await expect(page.getByRole('button', { name: '打开导航' })).toBeHidden()
+  await expect(page.getByRole('button', { name: /打开导航/ })).toBeHidden()
 
   for (const name of pages) {
     const item = nav.getByRole('button', { name })
@@ -19,11 +23,11 @@ test('desktop navigation reaches every workspace', async ({ page }) => {
 test('compact navigation opens, closes and reaches every workspace', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  const nav = page.getByRole('navigation', { name: '主导航' })
+  const nav = page.getByRole('navigation', { name: /主导航/ })
   await expect(nav).toBeHidden()
 
   for (const name of pages) {
-    await page.getByRole('button', { name: '打开导航' }).click()
+    await page.getByRole('button', { name: /打开导航/ }).click()
     await expect(nav).toBeVisible()
     await nav.getByRole('button', { name }).click()
     await expect(nav).toBeHidden()
@@ -35,10 +39,10 @@ for (const width of [320, 390, 768, 1440]) {
   test(`every workspace fits the ${width}px viewport`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
-    const nav = page.getByRole('navigation', { name: '主导航' })
+    const nav = page.getByRole('navigation', { name: /主导航/ })
 
     for (const name of pages) {
-      if (width <= 640) await page.getByRole('button', { name: '打开导航' }).click()
+      if (width <= 640) await page.getByRole('button', { name: /打开导航/ }).click()
       await nav.getByRole('button', { name }).click()
       const heading = page.getByRole('heading', { name, exact: true, level: 1 })
       await expect(heading).toBeVisible()
@@ -63,11 +67,11 @@ for (const width of [320, 390, 768, 1440]) {
 test('compact menu supports keyboard opening and dismissal', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto('/')
-  const menu = page.getByRole('button', { name: '打开导航' })
+  const menu = page.getByRole('button', { name: /打开导航/ })
   await menu.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: /主导航/ })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('navigation', { name: '主导航' })).toBeHidden()
+  await expect(page.getByRole('navigation', { name: /主导航/ })).toBeHidden()
   await expect(menu).toBeFocused()
 })

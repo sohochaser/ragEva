@@ -36,18 +36,18 @@ describe('MatchingPreview', () => {
       ],
     }} />)
 
-    await user.click(await screen.findByRole('button', { name: '预览' }))
+    await user.click(await screen.findByRole('button', { name: /预览/ }))
     const table = (await screen.findAllByRole('table'))[1]
     expect(screen.getByText('0.1000')).toBeTruthy()
     expect(within(table).getByText('0.9100')).toBeTruthy()
-    expect(within(table).queryByText('文档不同')).toBeNull()
-    await user.click(screen.getByRole('button', { name: '全部' }))
-    expect(within(table).getByText('文档不同')).toBeTruthy()
+    expect(within(table).queryByText(/文档不同/)).toBeNull()
+    await user.click(screen.getByRole('button', { name: /全部/ }))
+    expect(within(table).getByText(/文档不同/)).toBeTruthy()
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
-    await user.clear(screen.getByRole('combobox', { name: '本地模型' }))
-    await user.type(screen.getByRole('combobox', { name: '本地模型' }), 'other-model')
-    expect((screen.getByRole('spinbutton', { name: '相似度阈值' }) as HTMLInputElement).value).toBe('')
-    expect(screen.getByRole('button', { name: '预览' }).hasAttribute('disabled')).toBe(true)
+    await user.clear(screen.getByRole('combobox', { name: /本地模型/ }))
+    await user.type(screen.getByRole('combobox', { name: /本地模型/ }), 'other-model')
+    expect((screen.getByRole('spinbutton', { name: /相似度阈值/ }) as HTMLInputElement).value).toBe('')
+    expect(screen.getByRole('button', { name: /预览/ }).hasAttribute('disabled')).toBe(true)
   })
 })

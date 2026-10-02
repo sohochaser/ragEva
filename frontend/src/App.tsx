@@ -18,22 +18,22 @@ type StatusDashboardProps = {
 }
 
 const labels: Record<ServiceState, string> = {
-  checking: '检查中',
-  online: '运行中',
-  offline: '不可用',
+  checking: 'Checking（检查中）',
+  online: 'Online（运行中）',
+  offline: 'Offline（不可用）',
 }
 
 type Page = 'documents' | 'generations' | 'datasets' | 'predictions' | 'targets' | 'scenarios' | 'runs' | 'status'
 
 const navigation = [
-  { page: 'documents', label: '文档集合', icon: Files },
-  { page: 'generations', label: '候选生成', icon: Sparkles },
-  { page: 'datasets', label: '数据集', icon: Database },
-  { page: 'predictions', label: '预测批次', icon: FileInput },
-  { page: 'targets', label: 'HTTP 目标', icon: Globe2 },
-  { page: 'scenarios', label: '评价场景', icon: SlidersHorizontal },
-  { page: 'runs', label: '评测运行', icon: Workflow },
-  { page: 'status', label: '系统状态', icon: Activity },
+  { page: 'documents', label: 'Document Collections（文档集合）', icon: Files },
+  { page: 'generations', label: 'Candidate Generation（候选生成）', icon: Sparkles },
+  { page: 'datasets', label: 'Datasets（数据集）', icon: Database },
+  { page: 'predictions', label: 'Prediction Batches（预测批次）', icon: FileInput },
+  { page: 'targets', label: 'HTTP Targets（HTTP 目标）', icon: Globe2 },
+  { page: 'scenarios', label: 'Evaluation Scenarios（评价场景）', icon: SlidersHorizontal },
+  { page: 'runs', label: 'Evaluation Runs（评测运行）', icon: Workflow },
+  { page: 'status', label: 'System Status（系统状态）', icon: Activity },
 ] as const
 
 export function PrimaryNavigation({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
@@ -53,7 +53,7 @@ export function PrimaryNavigation({ page, onNavigate }: { page: Page; onNavigate
           ref={menuButton}
           className="menu-toggle"
           type="button"
-          aria-label={menuOpen ? '关闭导航' : '打开导航'}
+          aria-label={menuOpen ? 'Close Navigation（关闭导航）' : 'Open Navigation（打开导航）'}
           aria-expanded={menuOpen}
           aria-controls="primary-nav"
           onClick={() => setMenuOpen((open) => !open)}
@@ -61,7 +61,7 @@ export function PrimaryNavigation({ page, onNavigate }: { page: Page; onNavigate
           {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
         </button>
       </div>
-      <nav id="primary-nav" className={`primary-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="主导航">
+      <nav id="primary-nav" className={`primary-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="Main Navigation（主导航）">
         {navigation.map(({ page: target, label, icon: Icon }) => (
           <button
             key={target}
@@ -74,7 +74,7 @@ export function PrimaryNavigation({ page, onNavigate }: { page: Page; onNavigate
           </button>
         ))}
       </nav>
-      <div className="sidebar-foot">本机工作台</div>
+      <div className="sidebar-foot">Local Workspace（本机工作台）</div>
     </aside>
   )
 }
@@ -110,24 +110,24 @@ export function StatusDashboard({ api, worker, refreshedAt, onRefresh }: StatusD
     <>
         <header className="page-header">
           <div>
-            <p className="eyebrow">WORKSPACE</p>
-            <h1>系统状态</h1>
+            <p className="eyebrow">Workspace（工作台）</p>
+            <h1>System Status（系统状态）</h1>
           </div>
-          <button className="refresh-button" type="button" onClick={onRefresh} title="刷新状态" aria-label="刷新状态">
+          <button className="refresh-button" type="button" onClick={onRefresh} title="Refresh Status（刷新状态）" aria-label="Refresh Status（刷新状态）">
             <RefreshCw size={17} aria-hidden="true" />
           </button>
         </header>
         <section className="status-section" aria-labelledby="services-title">
           <div className="section-heading">
-            <h2 id="services-title">服务</h2>
-            <span>{refreshedAt ? `更新于 ${refreshedAt}` : '正在检查'}</span>
+            <h2 id="services-title">Services（服务）</h2>
+            <span>{refreshedAt ? `Updated（更新于） ${refreshedAt}` : 'Checking（正在检查）'}</span>
           </div>
           <div className="status-list">
-            <StatusItem title="管理 API" detail="本机管理服务" state={api} icon={<Server size={20} />} />
-            <StatusItem title="任务 Worker" detail="本地队列处理进程" state={worker} icon={<Workflow size={20} />} />
+            <StatusItem title="Management API（管理 API）" detail="Local Management Service（本机管理服务）" state={api} icon={<Server size={20} />} />
+            <StatusItem title="Task Worker（任务 Worker）" detail="Local Queue Worker（本地队列处理进程）" state={worker} icon={<Workflow size={20} />} />
           </div>
           <a className="api-link" href="/docs" target="_blank" rel="noreferrer">
-            API 文档 <ArrowUpRight size={16} aria-hidden="true" />
+            API Docs（API 文档） <ArrowUpRight size={16} aria-hidden="true" />
           </a>
         </section>
     </>
