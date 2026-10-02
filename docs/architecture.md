@@ -12,6 +12,8 @@ US-005/006 已落地的本地匹配边界：`backend/adapters/local_embeddings.p
 
 US-004 已落地的运行边界：`backend/adapters/run_store.py` 在 SQLite 中固定批次、模型、阈值及规则配置，逐题结果和错误分别保存；Huey Worker 在 `backend/worker/run_processor.py` 中逐题评分。API 可异步创建运行、查询列表/进度/样本、取消运行；React 运行页轮询状态。重复任务只允许一次从排队态领取，取消后不再写入新样本结果。
 
+US-007 已落地的结果边界：运行聚合保存三项检索指标的均值与分布；逐题 API 支持状态筛选，CSV/JSON 导出从同一运行快照和逐题存储生成。React 运行页显示总体指标、逐题原文和匹配证据，空有效集显示不适用。
+
 ```text
 React + TypeScript
     |

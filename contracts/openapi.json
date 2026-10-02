@@ -797,12 +797,254 @@
         "title": "ReferenceChunkResponse",
         "type": "object"
       },
+      "RetrievalScoreResponse": {
+        "properties": {
+          "gain_rule_version": {
+            "title": "Gain Rule Version",
+            "type": "string"
+          },
+          "match_rule_version": {
+            "title": "Match Rule Version",
+            "type": "string"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "scores": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/KScoreResponse"
+            },
+            "title": "Scores",
+            "type": "object"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "model_id",
+          "threshold",
+          "match_rule_version",
+          "gain_rule_version",
+          "scores"
+        ],
+        "title": "RetrievalScoreResponse",
+        "type": "object"
+      },
+      "RunAggregate": {
+        "properties": {
+          "distribution": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": "object"
+            },
+            "title": "Distribution",
+            "type": "object"
+          },
+          "map_at_k": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Map At K",
+            "type": "object"
+          },
+          "ndcg_at_k": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Ndcg At K",
+            "type": "object"
+          },
+          "not_applicable_count": {
+            "title": "Not Applicable Count",
+            "type": "integer"
+          },
+          "precision_at_k": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Precision At K",
+            "type": "object"
+          },
+          "valid_count": {
+            "title": "Valid Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "valid_count",
+          "not_applicable_count",
+          "precision_at_k",
+          "map_at_k",
+          "ndcg_at_k"
+        ],
+        "title": "RunAggregate",
+        "type": "object"
+      },
+      "RunCaseResponse": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "contexts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PredictedChunkResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contexts"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          },
+          "reference_chunks": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChunkInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Chunks"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalScoreResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "success",
+              "failed",
+              "not_applicable",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Latency Ms"
+          }
+        },
+        "required": [
+          "case_id",
+          "status",
+          "error",
+          "elapsed_ms",
+          "score",
+          "question",
+          "reference_answer",
+          "reference_chunks",
+          "answer",
+          "contexts",
+          "target_latency_ms"
+        ],
+        "title": "RunCaseResponse",
+        "type": "object"
+      },
       "RunCasesPage": {
         "properties": {
           "cases": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/RunCaseResponse"
             },
             "title": "Cases",
             "type": "array"
@@ -894,14 +1136,12 @@
           "aggregate": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/RunAggregate"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Aggregate"
+            ]
           },
           "cancel_requested": {
             "title": "Cancel Requested",
@@ -1840,6 +2080,29 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "success",
+                    "failed",
+                    "not_applicable",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
           }
         ],
         "responses": {
@@ -1865,6 +2128,83 @@
           }
         },
         "summary": "Get Cases",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/export": {
+      "get": {
+        "operationId": "export_api_v1_runs__run_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "success",
+                    "failed",
+                    "not_applicable",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export",
         "tags": [
           "runs"
         ]

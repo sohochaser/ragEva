@@ -260,6 +260,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export */
+        get: operations["export_api_v1_runs__run_id__export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -527,12 +544,77 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** RetrievalScoreResponse */
+        RetrievalScoreResponse: {
+            /** Gain Rule Version */
+            gain_rule_version: string;
+            /** Match Rule Version */
+            match_rule_version: string;
+            /** Model Id */
+            model_id: string;
+            /** Scores */
+            scores: {
+                [key: string]: components["schemas"]["KScoreResponse"];
+            };
+            /** Threshold */
+            threshold: number;
+        };
+        /** RunAggregate */
+        RunAggregate: {
+            /** Distribution */
+            distribution?: {
+                [key: string]: {
+                    [key: string]: number[];
+                };
+            };
+            /** Map At K */
+            map_at_k: {
+                [key: string]: number | null;
+            };
+            /** Ndcg At K */
+            ndcg_at_k: {
+                [key: string]: number | null;
+            };
+            /** Not Applicable Count */
+            not_applicable_count: number;
+            /** Precision At K */
+            precision_at_k: {
+                [key: string]: number | null;
+            };
+            /** Valid Count */
+            valid_count: number;
+        };
+        /** RunCaseResponse */
+        RunCaseResponse: {
+            /** Answer */
+            answer: string | null;
+            /** Case Id */
+            case_id: string;
+            /** Contexts */
+            contexts: components["schemas"]["PredictedChunkResponse"][] | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /** Error */
+            error: string | null;
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string | null;
+            /** Reference Chunks */
+            reference_chunks: components["schemas"]["ChunkInput"][] | null;
+            score: components["schemas"]["RetrievalScoreResponse"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "success" | "failed" | "not_applicable" | "cancelled";
+            /** Target Latency Ms */
+            target_latency_ms: number | null;
+        };
         /** RunCasesPage */
         RunCasesPage: {
             /** Cases */
-            cases: {
-                [key: string]: unknown;
-            }[];
+            cases: components["schemas"]["RunCaseResponse"][];
             /** Limit */
             limit: number;
             /** Offset */
@@ -568,10 +650,7 @@ export interface components {
         };
         /** RunSummary */
         RunSummary: {
-            /** Aggregate */
-            aggregate: {
-                [key: string]: unknown;
-            } | null;
+            aggregate: components["schemas"]["RunAggregate"] | null;
             /** Cancel Requested */
             cancel_requested: boolean;
             /** Cancelled Count */
@@ -1119,6 +1198,7 @@ export interface operations {
             query?: {
                 offset?: number;
                 limit?: number;
+                status?: ("pending" | "success" | "failed" | "not_applicable" | "cancelled") | null;
             };
             header?: never;
             path: {
@@ -1135,6 +1215,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunCasesPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_api_v1_runs__run_id__export_get: {
+        parameters: {
+            query?: {
+                format?: "json" | "csv";
+                status?: ("pending" | "success" | "failed" | "not_applicable" | "cancelled") | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

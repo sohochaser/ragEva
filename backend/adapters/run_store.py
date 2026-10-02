@@ -348,9 +348,16 @@ class RunStore(PredictionStore):
             ).fetchall()
         return [self.get_run(row["id"]) for row in rows]
 
-    def get_cases(self, run_id: str, offset: int, limit: int) -> dict[str, Any]:
+    def get_cases(
+        self, run_id: str, offset: int, limit: int, status: CaseStatus | None = None
+    ) -> dict[str, Any]:
         run = self.get_run(run_id)
         with closing(self._connect()) as connection:
+            where = "WHERE rc.run_id = ?" + (" AND rc.status = ?" if status else "")
+            parameters: tuple[str, ...] = (run_id, status) if status else (run_id,)
+            count = connection.execute(
+                "SELECT COUNT(*) FROM run_cases rc " + where, parameters
+            ).fetchone()[0]
             rows = connection.execute(
                 "SELECT rc.case_id, rc.status, rc.error, rc.elapsed_ms, rc.score_json, "
                 "c.question, c.reference_answer, c.reference_chunks_json, "
@@ -360,12 +367,12 @@ class RunStore(PredictionStore):
                 "JOIN evaluation_cases c ON c.version_id = b.dataset_version_id "
                 "AND c.case_id = rc.case_id "
                 "LEFT JOIN predictions p ON p.batch_id = b.id AND p.case_id = rc.case_id "
-                "WHERE rc.run_id = ? ORDER BY rc.position LIMIT ? OFFSET ?",
-                (run_id, limit, offset),
+                f"{where} ORDER BY rc.position LIMIT ? OFFSET ?",
+                (*parameters, limit, offset),
             ).fetchall()
         return {
             "run_id": run_id,
-            "total": run["total_count"],
+            "total": count if status else run["total_count"],
             "offset": offset,
             "limit": limit,
             "cases": [

@@ -56,6 +56,7 @@ class RetrievalAggregate:
     precision_at_k: dict[int, float | None]
     map_at_k: dict[int, float | None]
     ndcg_at_k: dict[int, float | None]
+    distribution: dict[str, dict[int, list[int]]]
 
 
 def score_from_dict(payload: Mapping[str, Any]) -> RetrievalCaseScore:
@@ -226,10 +227,23 @@ def aggregate_retrieval(
             for k in ks
         }
 
+    def distribution(field: str) -> dict[int, list[int]]:
+        bins = {k: [0, 0, 0, 0, 0] for k in ks}
+        for result in valid:
+            for k in ks:
+                value = getattr(result.scores[k], field)
+                bins[k][min(int(value * 5), 4)] += 1
+        return bins
+
     return RetrievalAggregate(
         valid_count=count,
         not_applicable_count=len(results) - count,
         precision_at_k=average("precision"),
         map_at_k=average("ap"),
         ndcg_at_k=average("ndcg"),
+        distribution={
+            "precision": distribution("precision"),
+            "map": distribution("ap"),
+            "ndcg": distribution("ndcg"),
+        },
     )

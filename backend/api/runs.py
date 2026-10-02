@@ -1,14 +1,19 @@
 """Asynchronous retrieval runs and durable result access."""
 
+import csv
+import io
+import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field, field_validator
 
 from backend.adapters.run_store import RunInputError, RunNotFound, RunStore
+from backend.api.matching import ChunkInput, KScoreResponse
+from backend.api.predictions import PredictedChunkResponse
 from backend.config import Settings
-from backend.domain.runs import MetricKey
+from backend.domain.runs import CaseStatus, MetricKey
 from backend.health import worker_is_ready
 from backend.worker.queue import score_run_task
 
@@ -41,7 +46,7 @@ class RunSummary(BaseModel):
     status: str
     config: dict[str, Any]
     model_id: str | None
-    aggregate: dict[str, Any] | None
+    aggregate: "RunAggregate | None"
     cancel_requested: bool
     total_count: int
     processed_count: int
@@ -59,7 +64,38 @@ class RunCasesPage(BaseModel):
     total: int
     offset: int
     limit: int
-    cases: list[dict[str, Any]]
+    cases: list["RunCaseResponse"]
+
+
+class RunAggregate(BaseModel):
+    valid_count: int
+    not_applicable_count: int
+    precision_at_k: dict[str, float | None]
+    map_at_k: dict[str, float | None]
+    ndcg_at_k: dict[str, float | None]
+    distribution: dict[str, dict[str, list[int]]] = Field(default_factory=dict)
+
+
+class RetrievalScoreResponse(BaseModel):
+    model_id: str
+    threshold: float
+    match_rule_version: str
+    gain_rule_version: str
+    scores: dict[str, KScoreResponse]
+
+
+class RunCaseResponse(BaseModel):
+    case_id: str
+    status: CaseStatus
+    error: str | None
+    elapsed_ms: float | None
+    score: RetrievalScoreResponse | None
+    question: str
+    reference_answer: str | None
+    reference_chunks: list[ChunkInput] | None
+    answer: str | None
+    contexts: list[PredictedChunkResponse] | None
+    target_latency_ms: float | None
 
 
 def create_run_router(settings: Settings) -> APIRouter:
@@ -105,11 +141,78 @@ def create_run_router(settings: Settings) -> APIRouter:
         run_id: str,
         offset: int = Query(default=0, ge=0),
         limit: int = Query(default=100, ge=1, le=1000),
+        status: CaseStatus | None = None,
     ) -> dict[str, Any]:
         try:
-            return store.get_cases(run_id, offset, limit)
+            return store.get_cases(run_id, offset, limit, status)
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="评测运行不存在") from exc
+
+    @router.get("/{run_id}/export")
+    def export(
+        run_id: str,
+        format: Literal["json", "csv"] = "json",
+        status: CaseStatus | None = None,
+    ) -> Response:
+        try:
+            run = store.get_run(run_id)
+            cases: list[dict[str, Any]] = []
+            while True:
+                page = store.get_cases(run_id, len(cases), 1000, status)
+                cases.extend(page["cases"])
+                if len(cases) >= page["total"]:
+                    break
+        except RunNotFound as exc:
+            raise HTTPException(status_code=404, detail="评测运行不存在") from exc
+        filename = f"rageva-{run_id}.{format}"
+        headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+        if format == "json":
+            return Response(
+                content=json.dumps({"run": run, "cases": cases}, ensure_ascii=False),
+                media_type="application/json",
+                headers=headers,
+            )
+        output = io.StringIO()
+        columns = [
+            "case_id",
+            "status",
+            "question",
+            "reference_answer",
+            "answer",
+            "error",
+            "target_latency_ms",
+            "elapsed_ms",
+            "precision_at_10",
+            "precision_at_20",
+            "ap_at_10",
+            "ap_at_20",
+            "ndcg_at_10",
+            "ndcg_at_20",
+            "reference_chunks",
+            "contexts",
+            "score",
+        ]
+        writer = csv.DictWriter(output, fieldnames=columns)
+        writer.writeheader()
+        for case in cases:
+            score = case["score"]
+            row = {key: case[key] for key in columns[:8]}
+            for k in (10, 20):
+                at_k = score["scores"].get(str(k)) if score else None
+                for field, source in (("precision", "precision"), ("ap", "ap"), ("ndcg", "ndcg")):
+                    row[f"{field}_at_{k}"] = at_k[source] if at_k else None
+            for key in ("reference_chunks", "contexts", "score"):
+                row[key] = (
+                    json.dumps(case[key], ensure_ascii=False) if case[key] is not None else None
+                )
+            for key in ("case_id", "question", "reference_answer", "answer"):
+                value = row.get(key)
+                if isinstance(value, str) and value.startswith(("=", "+", "-", "@")):
+                    row[key] = "'" + value
+            writer.writerow(row)
+        return Response(
+            content=output.getvalue(), media_type="text/csv; charset=utf-8", headers=headers
+        )
 
     @router.post("/{run_id}/cancel", response_model=RunSummary)
     def cancel(run_id: str) -> dict[str, Any]:

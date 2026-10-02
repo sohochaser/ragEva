@@ -1,3 +1,4 @@
+import csv
 import io
 import json
 from dataclasses import asdict
@@ -222,3 +223,30 @@ def test_missing_worker_or_mismatched_batch_returns_clear_error(
         ).status_code
         == 404
     )
+
+
+def test_result_filter_and_exports_share_saved_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from backend.worker.run_processor import process_run
+
+    api, batch_id = api_with_batch(tmp_path, monkeypatch)
+    run_id = str(create_run(api, batch_id)["id"])
+    process_run(run_id, tmp_path, encoder_factory=FakeEncoder)
+    run = api.get(f"/api/v1/runs/{run_id}").json()
+    assert run["aggregate"]["distribution"]["map"]["10"] == [0, 0, 0, 0, 1]
+    assert run["aggregate"]["valid_count"] == 1
+    filtered = api.get(f"/api/v1/runs/{run_id}/cases?status=success").json()
+    assert filtered["total"] == 1
+    assert [item["case_id"] for item in filtered["cases"]] == ["q1"]
+
+    exported = api.get(f"/api/v1/runs/{run_id}/export?format=json").json()
+    assert exported["run"] == run
+    assert exported["cases"] == api.get(f"/api/v1/runs/{run_id}/cases").json()["cases"]
+    csv_response = api.get(f"/api/v1/runs/{run_id}/export?format=csv&status=success")
+    assert "attachment" in csv_response.headers["content-disposition"]
+    rows = list(csv.DictReader(io.StringIO(csv_response.text)))
+    assert len(rows) == 1
+    assert float(rows[0]["ap_at_10"]) == filtered["cases"][0]["score"]["scores"]["10"]["ap"]
+    assert json.loads(rows[0]["contexts"]) == filtered["cases"][0]["contexts"]
+    assert api.get("/api/v1/runs/missing/export").status_code == 404
