@@ -16,6 +16,7 @@ from backend.api.scenarios import create_scenario_router
 from backend.api.targets import create_target_job_router, create_target_router
 from backend.config import Settings
 from backend.health import worker_is_ready
+from backend.tracing import configure_tracing
 
 
 class HealthResponse(BaseModel):
@@ -25,6 +26,7 @@ class HealthResponse(BaseModel):
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or Settings.from_env()
+    configure_tracing(config, "rageva-api")
     application = FastAPI(title="ragEva API", version="0.1.0")
     application.include_router(create_dataset_router(config))
     application.include_router(create_document_collection_router(config))

@@ -1198,6 +1198,7 @@ export interface components {
             attempted_count: number;
             /** Collection Id */
             collection_id: string;
+            collection_trace?: components["schemas"]["TraceReference"] | null;
             /** Config */
             config: {
                 [key: string]: unknown;
@@ -1222,6 +1223,7 @@ export interface components {
             target_count: number;
             /** Target Multi Count */
             target_multi_count: number;
+            trace?: components["schemas"]["TraceReference"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1546,10 +1548,12 @@ export interface components {
             }[] | null;
             /** Target Latency Ms */
             target_latency_ms: number | null;
+            target_trace?: components["schemas"]["TraceReference"] | null;
             /** Target Usage */
             target_usage?: {
                 [key: string]: number;
             } | null;
+            trace?: components["schemas"]["TraceReference"] | null;
         };
         /** RunCasesPage */
         RunCasesPage: {
@@ -1652,6 +1656,7 @@ export interface components {
             created_at: string;
             /** Dataset Id */
             dataset_id: string;
+            dataset_trace?: components["schemas"]["TraceReference"] | null;
             /** Dataset Version */
             dataset_version: number;
             /** Estimated External Calls */
@@ -1668,6 +1673,7 @@ export interface components {
             not_applicable_count: number;
             /** Prediction Batch Id */
             prediction_batch_id: string;
+            prediction_trace?: components["schemas"]["TraceReference"] | null;
             /** Processed Count */
             processed_count: number;
             /** Started At */
@@ -1678,6 +1684,7 @@ export interface components {
             success_count: number;
             /** Total Count */
             total_count: number;
+            trace?: components["schemas"]["TraceReference"] | null;
         };
         /** ScenarioCreate */
         ScenarioCreate: {
@@ -1825,6 +1832,7 @@ export interface components {
             error: string | null;
             /** Status */
             status: string;
+            trace?: components["schemas"]["TraceReference"] | null;
             /** Usage */
             usage: {
                 [key: string]: number;
@@ -1884,6 +1892,7 @@ export interface components {
             target_id: string;
             /** Total Count */
             total_count: number;
+            trace?: components["schemas"]["TraceReference"] | null;
         };
         /** TargetSummary */
         TargetSummary: {
@@ -1949,6 +1958,22 @@ export interface components {
             calls: number;
             /** Tokens */
             tokens: number;
+        };
+        /** TraceReference */
+        TraceReference: {
+            /** Expires At */
+            expires_at: string;
+            /** Span Id */
+            span_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "expired" | "unconfigured";
+            /** Trace Id */
+            trace_id: string;
+            /** Url */
+            url: string | null;
         };
         /** UsageCall */
         UsageCall: {

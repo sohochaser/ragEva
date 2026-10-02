@@ -3,18 +3,22 @@
 from collections import deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from functools import partial
 from pathlib import Path
 
 import httpx
+from opentelemetry import trace
 
 from backend.adapters.document_store import CollectionNotFound
 from backend.adapters.generation_model import GeneratedCase, GenerationModelError, generate_case
 from backend.adapters.generation_store import GenerationStore
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
+from backend.adapters.trace_store import TraceStore
 from backend.adapters.usage_store import UsageStore
-from backend.domain.generation import plan_slots, reference_chunks
+from backend.domain.generation import GenerationSlot, plan_slots, reference_chunks
 from backend.domain.model_usage import model_call_usage
+from backend.tracing import attributes, business_span, fail
 
 
 def process_generation(
@@ -24,6 +28,7 @@ def process_generation(
 ) -> None:
     store = GenerationStore(data_dir)
     usage_store = UsageStore(data_dir)
+    traces = TraceStore(data_dir)
     if not store.claim(run_id):
         return
     unavailable_multi = 0
@@ -44,28 +49,36 @@ def process_generation(
             usage: dict[str, int] | None,
             slot_index: int,
         ) -> None:
+            token_usage = model_call_usage(messages, content, usage)
+            attributes(
+                trace.get_current_span(),
+                **{
+                    "token.input": token_usage["input_tokens"],
+                    "token.output": token_usage["output_tokens"],
+                },
+            )
             usage_store.record(
                 "generation",
                 run_id,
                 "generation",
                 str(slot_index),
                 config["model_name"],
-                model_call_usage(messages, content, usage),
+                token_usage,
             )
 
-        with (
-            client_factory() as client,
-            ThreadPoolExecutor(max_workers=run["max_concurrency"]) as pool,
-        ):
-            while pending and store.get(run_id)["attempted_count"] < run["max_calls"]:
-                remaining = run["max_calls"] - store.get(run_id)["attempted_count"]
-                batch = [
-                    pending.popleft()
-                    for _ in range(min(len(pending), remaining, run["max_concurrency"]))
-                ]
-                futures = [
-                    pool.submit(
-                        generate_case,
+        def generate_slot(slot: GenerationSlot) -> GeneratedCase:
+            with business_span("generation.attempt") as span:
+                attributes(
+                    span,
+                    **{
+                        "generation.id": run_id,
+                        "model.id": config["model_name"],
+                        "slot.index": slot.index,
+                    },
+                )
+                traces.record("generation_slot", f"{run_id}:{slot.index}", span)
+                try:
+                    result = generate_case(
                         client,
                         config["base_url"],
                         config["model_name"],
@@ -77,8 +90,23 @@ def process_generation(
                         config["instructions"],
                         partial(record_generation_call, slot_index=slot.index),
                     )
-                    for slot in batch
+                    attributes(span, **{"status": "success"})
+                    return result
+                except Exception as exc:
+                    fail(span, type(exc).__name__)
+                    raise
+
+        with (
+            client_factory() as client,
+            ThreadPoolExecutor(max_workers=run["max_concurrency"]) as pool,
+        ):
+            while pending and store.get(run_id)["attempted_count"] < run["max_calls"]:
+                remaining = run["max_calls"] - store.get(run_id)["attempted_count"]
+                batch = [
+                    pending.popleft()
+                    for _ in range(min(len(pending), remaining, run["max_concurrency"]))
                 ]
+                futures = [pool.submit(copy_context().run, generate_slot, slot) for slot in batch]
                 for slot, future in zip(batch, futures, strict=True):
                     case: GeneratedCase | None = None
                     error = None
@@ -92,7 +120,18 @@ def process_generation(
                     if error:
                         case = None
                         pending.append(slot)
-                    store.record(run_id, slot, case, error)
+                    with business_span("generation.persist") as span:
+                        attributes(
+                            span,
+                            **{
+                                "generation.id": run_id,
+                                "slot.index": slot.index,
+                                "status": "failed" if error else "success",
+                            },
+                        )
+                        if error:
+                            fail(span, error)
+                        store.record(run_id, slot, case, error)
     except (CollectionNotFound, OnlineModelNotFound):
         store.finish(run_id, unavailable_multi, "missing_generation_dependency")
         return

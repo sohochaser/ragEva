@@ -30,7 +30,7 @@ def test_rescore_reuses_saved_matching_or_recalculates_for_new_threshold(
     from backend.api import runs
 
     monkeypatch.setattr(runs, "worker_is_ready", lambda *_: True)
-    monkeypatch.setattr(runs, "score_run_task", lambda _run_id: None)
+    monkeypatch.setattr(runs, "score_run_task", lambda _run_id, _context=None: None)
     api = TestClient(create_app(Settings(data_dir=tmp_path)))
     dataset = api.post(
         "/api/v1/datasets/import",
@@ -121,7 +121,7 @@ def test_rescore_uses_new_scenario_snapshot_without_changing_old_result(
     from backend.api import runs
 
     monkeypatch.setattr(runs, "worker_is_ready", lambda *_: True)
-    monkeypatch.setattr(runs, "score_run_task", lambda _run_id: None)
+    monkeypatch.setattr(runs, "score_run_task", lambda _run_id, _context=None: None)
     api = TestClient(create_app(Settings(data_dir=tmp_path)))
     dataset = api.post(
         "/api/v1/datasets/import",

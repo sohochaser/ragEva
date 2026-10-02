@@ -84,6 +84,8 @@ Python API (FastAPI)
 
 生成与评测运行、样本、预测批次与重试尝试关联 OpenTelemetry trace ID；API 到 Worker 的队列消息传递 trace 上下文。Jaeger 只保存 ID、耗时、token、状态、脱敏配置及错误摘要，默认保留 30 天且可配置；全文保存在候选或评测结果中直到用户删除。trace 过期不影响历史结果查看，凭据及认证头不进入 trace。
 
+US-022 落地：`backend/tracing.py` 配置 OTLP HTTP 异步导出并限制属性白名单；`backend/adapters/trace_store.py` 在业务 SQLite 中保存关联 ID、span ID 和生成时间，不保存 trace 正文。Huey 消息携带 W3C `traceparent`，线程池复制当前上下文。导入、生成、目标采集和评测各自埋点；目标预测批次与后续评测分别保留 trace 链接。`RAGEVA_TRACE_RETENTION_DAYS` 只计算页面过期提示，Jaeger 存储需配置相同保留期，详见 [trace 配置](tracing.md)。
+
 - `POST /api/v1/datasets/import`，`GET /api/v1/datasets/{id}/versions`
 - `POST /api/v1/document-collections`：上传 TXT/Markdown/DOCX/文本 PDF 或导入已有 chunk 清单；原文提取、切块与 `document_id` 校验后形成不可变快照。
 - `POST /api/v1/document-collections/{id}/generations`，`GET /api/v1/generations/{id}`，`GET /api/v1/generations/{id}/candidates`：生成任务接收目标条数、多 chunk 比例、语言、题型和补充要求，返回进度、实际数量和不足原因；完整 token 用量汇总由 US-021 接入。

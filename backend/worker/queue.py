@@ -3,6 +3,7 @@
 from huey import SqliteHuey
 
 from backend.config import Settings
+from backend.tracing import attributes, business_span, configure_tracing, received
 
 settings = Settings.from_env()
 settings.data_dir.mkdir(parents=True, exist_ok=True)
@@ -10,21 +11,30 @@ huey = SqliteHuey("rageva", filename=str(settings.data_dir / "queue.sqlite3"))
 
 
 @huey.task()
-def score_run_task(run_id: str) -> None:
+def score_run_task(run_id: str, trace_context: dict[str, str] | None = None) -> None:
     from backend.worker.run_processor import process_run
 
-    process_run(run_id, settings.data_dir)
+    configure_tracing(settings, "rageva-worker")
+    with received(trace_context), business_span("run.worker") as span:
+        attributes(span, **{"run.id": run_id})
+        process_run(run_id, settings.data_dir)
 
 
 @huey.task()
-def collect_target_task(job_id: str) -> None:
+def collect_target_task(job_id: str, trace_context: dict[str, str] | None = None) -> None:
     from backend.worker.target_collector import collect_target_job
 
-    collect_target_job(job_id, settings.data_dir)
+    configure_tracing(settings, "rageva-worker")
+    with received(trace_context), business_span("target.worker") as span:
+        attributes(span, **{"job.id": job_id})
+        collect_target_job(job_id, settings.data_dir)
 
 
 @huey.task()
-def generate_candidates_task(run_id: str) -> None:
+def generate_candidates_task(run_id: str, trace_context: dict[str, str] | None = None) -> None:
     from backend.worker.generation_processor import process_generation
 
-    process_generation(run_id, settings.data_dir)
+    configure_tracing(settings, "rageva-worker")
+    with received(trace_context), business_span("generation.worker") as span:
+        attributes(span, **{"generation.id": run_id})
+        process_generation(run_id, settings.data_dir)

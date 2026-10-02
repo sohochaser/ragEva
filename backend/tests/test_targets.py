@@ -93,7 +93,7 @@ def test_target_secret_connection_test_and_json_collection(
     assert "private-token" not in tested.text
 
     monkeypatch.setattr(targets, "worker_is_ready", lambda *_: True)
-    monkeypatch.setattr(targets, "collect_target_task", lambda _id: None)
+    monkeypatch.setattr(targets, "collect_target_task", lambda _id, _context=None: None)
     job_response = api.post(
         "/api/v1/target-jobs",
         json={

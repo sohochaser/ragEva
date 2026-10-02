@@ -8,11 +8,13 @@ from time import monotonic
 from typing import Any
 
 import httpx
+from opentelemetry import context, trace
 
 from backend.adapters.answer_model import AnswerModelError, evaluate_answer_metric
 from backend.adapters.local_embeddings import EmbeddingCache, Encoder, FastEmbedEncoder
 from backend.adapters.model_store import OnlineModelStore
 from backend.adapters.run_store import RunStore
+from backend.adapters.trace_store import TraceStore
 from backend.adapters.usage_store import UsageStore
 from backend.domain.answer_prompts import AnswerMetric, AnswerSample, applicability
 from backend.domain.datasets import ReferenceChunk
@@ -21,6 +23,7 @@ from backend.domain.model_usage import embedding_usage, model_call_usage
 from backend.domain.predictions import PredictedChunk
 from backend.domain.retrieval_scoring import score_retrieval
 from backend.domain.runs import CaseStatus
+from backend.tracing import attributes, business_span, fail, tracer
 
 EncoderFactory = Callable[[str, Path, Path | None, bool], Encoder]
 ClientFactory = Callable[[], httpx.Client]
@@ -40,9 +43,23 @@ def _score_retrieval_case(
         return "failed", None, "missing_contexts"
     reference = [ReferenceChunk(**chunk) for chunk in item["reference_chunks"]]
     predicted = [PredictedChunk(**chunk) for chunk in item["contexts"]]
-    vectors = cache.vectors(encoder, relevant_texts(reference, predicted), on_call)
-    pairs = candidate_pairs(reference, predicted, vectors, config["threshold"])
-    score = score_retrieval(reference, predicted, pairs, encoder.model_id, config["threshold"])
+    with business_span("retrieval.embed") as span:
+        attributes(span, **{"model.id": encoder.model_id})
+        try:
+            vectors = cache.vectors(encoder, relevant_texts(reference, predicted), on_call)
+        except Exception:
+            fail(span, "model_error")
+            raise
+    with business_span("retrieval.match") as span:
+        attributes(span, **{"model.id": encoder.model_id})
+        try:
+            pairs = candidate_pairs(reference, predicted, vectors, config["threshold"])
+            score = score_retrieval(
+                reference, predicted, pairs, encoder.model_id, config["threshold"]
+            )
+        except Exception:
+            fail(span, "scoring_error")
+            raise
     return "success", asdict(score), None
 
 
@@ -78,13 +95,21 @@ def _score_answer_case(
             usage: dict[str, int] | None,
             current_metric: AnswerMetric = metric,
         ) -> None:
+            token_usage = model_call_usage(messages, content, usage)
+            attributes(
+                trace.get_current_span(),
+                **{
+                    "token.input": token_usage["input_tokens"],
+                    "token.output": token_usage["output_tokens"],
+                },
+            )
             usage_store.record(
                 "run",
                 run_id,
                 "answer_scoring",
                 f"{case_id}:{current_metric}",
                 config["model_name"],
-                model_call_usage(messages, content, usage),
+                token_usage,
             )
 
         result: dict[str, Any] = {
@@ -106,17 +131,32 @@ def _score_answer_case(
             result["error"] = setup_error or "model_unavailable"
         else:
             try:
-                scored = evaluate_answer_metric(
-                    client,
-                    config["base_url"],
-                    config["model_name"],
-                    token,
-                    config["timeout_seconds"],
-                    metric,
-                    config["criteria"][metric],
-                    sample,
-                    record_answer_call,
-                )
+                with business_span("answer.score") as span:
+                    attributes(span, **{"metric": metric, "model.id": config["model_name"]})
+                    try:
+                        scored = evaluate_answer_metric(
+                            client,
+                            config["base_url"],
+                            config["model_name"],
+                            token,
+                            config["timeout_seconds"],
+                            metric,
+                            config["criteria"][metric],
+                            sample,
+                            record_answer_call,
+                        )
+                    except Exception as exc:
+                        fail(span, str(exc) if isinstance(exc, AnswerModelError) else "model_error")
+                        raise
+                    attributes(span, **{"status": "success"})
+                    if scored.usage:
+                        attributes(
+                            span,
+                            **{
+                                "token.input": scored.usage["input_tokens"],
+                                "token.output": scored.usage["output_tokens"],
+                            },
+                        )
                 result.update(
                     {
                         "status": "success",
@@ -132,7 +172,19 @@ def _score_answer_case(
             except Exception as exc:
                 result["status"] = "failed"
                 result["error"] = f"model_error:{type(exc).__name__}"
-        store.record_answer_metric(run_id, case_id, metric, result)
+        with business_span("answer.persist") as span:
+            attributes(
+                span,
+                **{
+                    "run.id": run_id,
+                    "case.id": case_id,
+                    "metric": metric,
+                    "status": result["status"],
+                },
+            )
+            if result["error"]:
+                fail(span, result["error"])
+            store.record_answer_metric(run_id, case_id, metric, result)
         statuses.append(result["status"])
     return statuses
 
@@ -145,6 +197,7 @@ def process_run(
 ) -> None:
     store = RunStore(data_dir)
     usage_store = UsageStore(data_dir)
+    traces = TraceStore(data_dir)
     if not store.claim(run_id):
         return
     config = store.config(run_id)
@@ -192,17 +245,28 @@ def process_run(
 
                 def record_embedding_call(texts: list[str], current_case_id: str = case_id) -> None:
                     if encoder is not None:
+                        token_usage = embedding_usage(texts)
+                        attributes(
+                            trace.get_current_span(),
+                            **{
+                                "token.input": token_usage["input_tokens"],
+                            },
+                        )
                         usage_store.record(
                             "run",
                             run_id,
                             "embedding",
                             current_case_id,
                             encoder.model_id,
-                            embedding_usage(texts),
+                            token_usage,
                         )
 
                 if store.cancellation_requested(run_id):
                     break
+                case_span = tracer().start_span("run.case")
+                trace_token = context.attach(trace.set_span_in_context(case_span))
+                attributes(case_span, **{"run.id": run_id, "case.id": case_id})
+                traces.record("run_case", f"{run_id}:{case_id}", case_span)
                 start = monotonic()
                 try:
                     item = store.input_for_case(run_id, case_id)
@@ -255,15 +319,25 @@ def process_run(
                         status = "failed"
                     else:
                         status = "not_applicable"
-                    store.record_case(
-                        run_id,
-                        case_id,
-                        status,
-                        score=retrieval_score,
-                        error=retrieval_error,
-                        elapsed_ms=(monotonic() - start) * 1000,
+                    with business_span("run.persist") as persist_span:
+                        attributes(
+                            persist_span, **{"run.id": run_id, "case.id": case_id, "status": status}
+                        )
+                        store.record_case(
+                            run_id,
+                            case_id,
+                            status,
+                            score=retrieval_score,
+                            error=retrieval_error,
+                            elapsed_ms=(monotonic() - start) * 1000,
+                        )
+                    attributes(
+                        case_span, **{"status": status, "elapsed.ms": (monotonic() - start) * 1000}
                     )
+                    if status == "failed":
+                        fail(case_span, retrieval_error or "metric_failed")
                 except Exception as exc:
+                    fail(case_span, f"scoring_error:{type(exc).__name__}")
                     store.record_case(
                         run_id,
                         case_id,
@@ -271,6 +345,9 @@ def process_run(
                         error=f"scoring_error:{type(exc).__name__}",
                         elapsed_ms=(monotonic() - start) * 1000,
                     )
+                finally:
+                    context.detach(trace_token)
+                    case_span.end()
         except Exception as exc:
             store.fail_pending(run_id, f"worker_error:{type(exc).__name__}")
         finally:

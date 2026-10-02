@@ -11,10 +11,12 @@ from pydantic import BaseModel
 from backend.adapters.dataset_files import read_rows
 from backend.adapters.document_store import CollectionNotFound, DocumentStore
 from backend.adapters.document_text import extract_document_text
+from backend.adapters.trace_store import TraceStore
 from backend.config import Settings
 from backend.domain.chunk_manifests import validate_manifest
 from backend.domain.datasets import ImportIssue
 from backend.domain.document_collections import DocumentIssue, validate_documents
+from backend.tracing import attributes, business_span
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
 
@@ -100,6 +102,7 @@ def _chunk_failure(issues: list[ImportIssue]) -> JSONResponse:
 def create_document_collection_router(settings: Settings) -> APIRouter:
     router = APIRouter(prefix="/api/v1/document-collections", tags=["document-collections"])
     store = DocumentStore(settings.data_dir)
+    traces = TraceStore(settings.data_dir)
 
     @router.post(
         "",
@@ -163,7 +166,11 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
         )
         if issues:
             return _failure(issues)
-        return CollectionDetail(**store.create(name.strip(), documents, chunk_size, chunk_overlap))
+        with business_span("collection.import") as span:
+            result = store.create(name.strip(), documents, chunk_size, chunk_overlap)
+            attributes(span, **{"collection.id": result["id"], "count": len(documents)})
+            traces.record("collection", result["id"], span)
+        return CollectionDetail(**result)
 
     @router.post(
         "/import-chunks",
@@ -192,7 +199,11 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
             issues.append(ImportIssue(None, "file", "empty_manifest", "清单至少需要一个 chunk"))
         if issues:
             return _chunk_failure(issues)
-        return CollectionDetail(**store.create_from_chunks(name.strip(), chunks))
+        with business_span("collection.import") as span:
+            result = store.create_from_chunks(name.strip(), chunks)
+            attributes(span, **{"collection.id": result["id"], "count": len(chunks)})
+            traces.record("collection", result["id"], span)
+        return CollectionDetail(**result)
 
     @router.get("", response_model=list[CollectionSummary])
     def list_collections() -> list[CollectionSummary]:

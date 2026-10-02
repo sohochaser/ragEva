@@ -11,10 +11,12 @@ from pydantic import BaseModel
 from backend.adapters.dataset_files import read_rows
 from backend.adapters.dataset_store import DatasetNotFound
 from backend.adapters.prediction_store import PredictionNotFound, PredictionStore
+from backend.adapters.trace_store import TraceStore
 from backend.api.datasets import ImportFailure, _failure
 from backend.config import Settings
 from backend.domain.datasets import FIELDS, ImportIssue, parse_field_mapping, validate_cases
 from backend.domain.predictions import PREDICTION_FIELDS, EvaluationType, validate_predictions
+from backend.tracing import attributes, business_span
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 ALL_FIELDS = tuple(dict.fromkeys((*FIELDS, *PREDICTION_FIELDS)))
@@ -55,6 +57,7 @@ class PredictionBatchDetail(PredictionBatchSummary):
 def create_prediction_router(settings: Settings) -> APIRouter:
     router = APIRouter(prefix="/api/v1/predictions", tags=["predictions"])
     store = PredictionStore(settings.data_dir)
+    traces = TraceStore(settings.data_dir)
 
     @router.post(
         "/import",
@@ -112,9 +115,12 @@ def create_prediction_router(settings: Settings) -> APIRouter:
         if issues:
             return _failure(issues)
         try:
-            summary = store.import_batch(
-                target_id, resolved_version, name, filename, evaluation_type, predictions, cases
-            )
+            with business_span("prediction.import") as span:
+                summary = store.import_batch(
+                    target_id, resolved_version, name, filename, evaluation_type, predictions, cases
+                )
+                attributes(span, **{"batch.id": summary["id"], "count": len(predictions)})
+                traces.record("batch", summary["id"], span)
         except DatasetNotFound as exc:
             raise HTTPException(status_code=404, detail="数据集版本不存在") from exc
         return PredictionBatchSummary(**summary)

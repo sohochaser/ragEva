@@ -133,7 +133,7 @@ def test_published_version_runs_through_normal_evaluation(
     )
     assert prediction.status_code == 201, prediction.text
     monkeypatch.setattr(runs, "worker_is_ready", lambda *_: True)
-    monkeypatch.setattr(runs, "score_run_task", lambda _run_id: None)
+    monkeypatch.setattr(runs, "score_run_task", lambda _run_id, _context=None: None)
     created = api.post(
         "/api/v1/runs",
         json={
