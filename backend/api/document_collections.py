@@ -1,4 +1,4 @@
-"""Immutable TXT and Markdown document collection API."""
+"""Immutable source document collection API."""
 
 import json
 from pathlib import Path
@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.adapters.document_store import CollectionNotFound, DocumentStore
+from backend.adapters.document_text import extract_document_text
 from backend.config import Settings
 from backend.domain.document_collections import DocumentIssue, validate_documents
 
@@ -126,7 +127,9 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
             uploads.append((file.filename or "", content))
         if issues:
             return _failure(issues)
-        documents, issues = validate_documents(uploads, parsed_ids, chunk_size, chunk_overlap)
+        documents, issues = validate_documents(
+            uploads, parsed_ids, chunk_size, chunk_overlap, extract_document_text
+        )
         if issues:
             return _failure(issues)
         return CollectionDetail(**store.create(name.strip(), documents, chunk_size, chunk_overlap))

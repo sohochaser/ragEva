@@ -44,7 +44,7 @@ function UploadDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
       </div>
       <form onSubmit={(event) => void submit(event)}>
         <label className="form-group"><span className="form-label">集合名称</span><input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
-        <label className="form-group"><span className="form-label">原文文件</span><input type="file" accept=".txt,.md,.markdown" multiple required onChange={(event) => {
+        <label className="form-group"><span className="form-label">原文文件</span><input type="file" accept=".txt,.md,.markdown,.docx,.pdf" multiple required onChange={(event) => {
           const selected = Array.from(event.target.files ?? [])
           setFiles(selected)
           setIds(selected.map(() => ''))
