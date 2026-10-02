@@ -107,6 +107,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/document-collections/import-chunks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Chunks */
+        post: operations["import_chunks_api_v1_document_collections_import_chunks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/document-collections/{collection_id}": {
         parameters: {
             query?: never;
@@ -422,6 +439,13 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** Body_import_chunks_api_v1_document_collections_import_chunks_post */
+        Body_import_chunks_api_v1_document_collections_import_chunks_post: {
+            /** File */
+            file: string;
+            /** Name */
+            name: string;
+        };
         /** Body_import_dataset_api_v1_datasets_import_post */
         Body_import_dataset_api_v1_datasets_import_post: {
             /** Dataset Id */
@@ -475,10 +499,37 @@ export interface components {
             /** Reference Chunks */
             reference_chunks: components["schemas"]["ReferenceChunkResponse"][] | null;
         };
+        /** ChunkImportFailure */
+        ChunkImportFailure: {
+            /** Error */
+            error: string;
+            /** Issues */
+            issues: components["schemas"]["ChunkImportIssueResponse"][];
+        };
+        /** ChunkImportIssueResponse */
+        ChunkImportIssueResponse: {
+            /** Code */
+            code: string;
+            /** Field */
+            field: string | null;
+            /** Line */
+            line: number | null;
+            /** Message */
+            message: string;
+        };
         /** ChunkInput */
         ChunkInput: {
             /** Document Id */
             document_id: string;
+            /** Text */
+            text: string;
+        };
+        /** CollectionChunkResponse */
+        CollectionChunkResponse: {
+            /** Document Id */
+            document_id: string;
+            /** Position */
+            position: number;
             /** Text */
             text: string;
         };
@@ -488,6 +539,8 @@ export interface components {
             chunk_overlap: number;
             /** Chunk Size */
             chunk_size: number;
+            /** Chunks */
+            chunks: components["schemas"]["CollectionChunkResponse"][];
             /** Created At */
             created_at: string;
             /** Document Count */
@@ -912,15 +965,17 @@ export interface components {
         /** SourceDocumentResponse */
         SourceDocumentResponse: {
             /** Byte Count */
-            byte_count: number;
+            byte_count: number | null;
             /** Checksum */
-            checksum: string;
+            checksum: string | null;
             /** Chunks */
             chunks: components["schemas"]["SourceChunkResponse"][];
             /** Document Id */
             document_id: string;
             /** Filename */
-            filename: string;
+            filename: string | null;
+            /** Has Original File */
+            has_original_file: boolean;
         };
         /** TargetCreate */
         TargetCreate: {
@@ -1332,6 +1387,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionImportFailure"];
+                };
+            };
+        };
+    };
+    import_chunks_api_v1_document_collections_import_chunks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_chunks_api_v1_document_collections_import_chunks_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDetail"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkImportFailure"];
                 };
             };
         };

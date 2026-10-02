@@ -1,4 +1,4 @@
-"""CSV and JSONL readers for gold cases."""
+"""CSV and JSONL readers for structured imports."""
 
 import csv
 import io

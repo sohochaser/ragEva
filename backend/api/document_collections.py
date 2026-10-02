@@ -8,8 +8,11 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from backend.adapters.dataset_files import read_rows
 from backend.adapters.document_store import CollectionNotFound, DocumentStore
 from backend.config import Settings
+from backend.domain.chunk_manifests import validate_manifest
+from backend.domain.datasets import ImportIssue
 from backend.domain.document_collections import DocumentIssue, validate_documents
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
@@ -34,11 +37,28 @@ class SourceChunkResponse(BaseModel):
 
 
 class SourceDocumentResponse(BaseModel):
-    filename: str
+    filename: str | None
     document_id: str
-    checksum: str
-    byte_count: int
+    checksum: str | None
+    byte_count: int | None
+    has_original_file: bool
     chunks: list[SourceChunkResponse]
+
+
+class CollectionChunkResponse(SourceChunkResponse):
+    document_id: str
+
+
+class ChunkImportIssueResponse(BaseModel):
+    line: int | None
+    field: str | None
+    code: str
+    message: str
+
+
+class ChunkImportFailure(BaseModel):
+    error: str
+    issues: list[ChunkImportIssueResponse]
 
 
 class CollectionSummary(BaseModel):
@@ -53,6 +73,7 @@ class CollectionSummary(BaseModel):
 
 class CollectionDetail(CollectionSummary):
     documents: list[SourceDocumentResponse]
+    chunks: list[CollectionChunkResponse]
 
 
 def _failure(issues: list[DocumentIssue]) -> JSONResponse:
@@ -61,6 +82,16 @@ def _failure(issues: list[DocumentIssue]) -> JSONResponse:
         content=CollectionImportFailure(
             error="validation_failed",
             issues=[DocumentIssueResponse(**vars(issue)) for issue in issues],
+        ).model_dump(),
+    )
+
+
+def _chunk_failure(issues: list[ImportIssue]) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content=ChunkImportFailure(
+            error="validation_failed",
+            issues=[ChunkImportIssueResponse(**vars(issue)) for issue in issues],
         ).model_dump(),
     )
 
@@ -130,6 +161,35 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
         if issues:
             return _failure(issues)
         return CollectionDetail(**store.create(name.strip(), documents, chunk_size, chunk_overlap))
+
+    @router.post(
+        "/import-chunks",
+        response_model=CollectionDetail,
+        status_code=201,
+        responses={422: {"model": ChunkImportFailure}},
+    )
+    async def import_chunks(
+        file: Annotated[UploadFile, File()], name: Annotated[str, Form()]
+    ) -> CollectionDetail | JSONResponse:
+        if not name.strip() or len(name.strip()) > 120:
+            return _chunk_failure(
+                [ImportIssue(None, "name", "invalid_name", "集合名称须为 1–120 字符")]
+            )
+        content = await file.read(MAX_FILE_BYTES + 1)
+        if len(content) > MAX_FILE_BYTES:
+            return _chunk_failure(
+                [ImportIssue(None, "file", "file_too_large", "文件不得超过 25 MiB")]
+            )
+        filename = Path(file.filename or "").name
+        fields = {field: field for field in ("position", "document_id", "text")}
+        rows, file_issues = read_rows(filename, content, fields, set(fields), tuple(fields))
+        chunks, chunk_issues = validate_manifest(rows) if rows else ([], [])
+        issues = file_issues + chunk_issues
+        if not rows and not file_issues:
+            issues.append(ImportIssue(None, "file", "empty_manifest", "清单至少需要一个 chunk"))
+        if issues:
+            return _chunk_failure(issues)
+        return CollectionDetail(**store.create_from_chunks(name.strip(), chunks))
 
     @router.get("", response_model=list[CollectionSummary])
     def list_collections() -> list[CollectionSummary]:

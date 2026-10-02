@@ -44,6 +44,25 @@
         "title": "Body_create_collection_api_v1_document_collections_post",
         "type": "object"
       },
+      "Body_import_chunks_api_v1_document_collections_import_chunks_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "name"
+        ],
+        "title": "Body_import_chunks_api_v1_document_collections_import_chunks_post",
+        "type": "object"
+      },
       "Body_import_dataset_api_v1_datasets_import_post": {
         "properties": {
           "dataset_id": {
@@ -244,6 +263,69 @@
         "title": "CaseResponse",
         "type": "object"
       },
+      "ChunkImportFailure": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkImportIssueResponse"
+            },
+            "title": "Issues",
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "issues"
+        ],
+        "title": "ChunkImportFailure",
+        "type": "object"
+      },
+      "ChunkImportIssueResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line",
+          "field",
+          "code",
+          "message"
+        ],
+        "title": "ChunkImportIssueResponse",
+        "type": "object"
+      },
       "ChunkInput": {
         "properties": {
           "document_id": {
@@ -264,6 +346,29 @@
         "title": "ChunkInput",
         "type": "object"
       },
+      "CollectionChunkResponse": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "text",
+          "document_id"
+        ],
+        "title": "CollectionChunkResponse",
+        "type": "object"
+      },
       "CollectionDetail": {
         "properties": {
           "chunk_overlap": {
@@ -273,6 +378,13 @@
           "chunk_size": {
             "title": "Chunk Size",
             "type": "integer"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/CollectionChunkResponse"
+            },
+            "title": "Chunks",
+            "type": "array"
           },
           "created_at": {
             "title": "Created At",
@@ -310,7 +422,8 @@
           "chunk_overlap",
           "created_at",
           "document_count",
-          "documents"
+          "documents",
+          "chunks"
         ],
         "title": "CollectionDetail",
         "type": "object"
@@ -1535,12 +1648,26 @@
       "SourceDocumentResponse": {
         "properties": {
           "byte_count": {
-            "title": "Byte Count",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Byte Count"
           },
           "checksum": {
-            "title": "Checksum",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum"
           },
           "chunks": {
             "items": {
@@ -1554,8 +1681,19 @@
             "type": "string"
           },
           "filename": {
-            "title": "Filename",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "has_original_file": {
+            "title": "Has Original File",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1563,6 +1701,7 @@
           "document_id",
           "checksum",
           "byte_count",
+          "has_original_file",
           "chunks"
         ],
         "title": "SourceDocumentResponse",
@@ -2449,6 +2588,47 @@
           }
         },
         "summary": "Create Collection",
+        "tags": [
+          "document-collections"
+        ]
+      }
+    },
+    "/api/v1/document-collections/import-chunks": {
+      "post": {
+        "operationId": "import_chunks_api_v1_document_collections_import_chunks_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_chunks_api_v1_document_collections_import_chunks_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkImportFailure"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Import Chunks",
         "tags": [
           "document-collections"
         ]
