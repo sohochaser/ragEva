@@ -768,6 +768,96 @@
         "title": "KScoreResponse",
         "type": "object"
       },
+      "OnlineModelCreate": {
+        "properties": {
+          "base_url": {
+            "minLength": 1,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "bearer_token": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bearer Token"
+          },
+          "model_name": {
+            "minLength": 1,
+            "title": "Model Name",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "default": 60,
+            "exclusiveMinimum": 0.0,
+            "maximum": 180.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "base_url",
+          "model_name"
+        ],
+        "title": "OnlineModelCreate",
+        "type": "object"
+      },
+      "OnlineModelSummary": {
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "has_token": {
+            "title": "Has Token",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "title": "Timeout Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "base_url",
+          "model_name",
+          "has_token",
+          "timeout_seconds",
+          "created_at"
+        ],
+        "title": "OnlineModelSummary",
+        "type": "object"
+      },
       "PredictedChunkResponse": {
         "properties": {
           "chunk_id": {
@@ -996,6 +1086,70 @@
         "title": "PredictionResponse",
         "type": "object"
       },
+      "PreviewMetric": {
+        "properties": {
+          "raw_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Response"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage"
+          }
+        },
+        "required": [
+          "status",
+          "score",
+          "reason",
+          "raw_response",
+          "usage"
+        ],
+        "title": "PreviewMetric",
+        "type": "object"
+      },
       "PreviewRequest": {
         "properties": {
           "model_name": {
@@ -1095,6 +1249,40 @@
           "scores"
         ],
         "title": "PreviewResponse",
+        "type": "object"
+      },
+      "PromptTemplate": {
+        "properties": {
+          "output_schema": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Output Schema",
+            "type": "object"
+          },
+          "system_prompt": {
+            "title": "System Prompt",
+            "type": "string"
+          },
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Variables",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "system_prompt",
+          "variables",
+          "output_schema"
+        ],
+        "title": "PromptTemplate",
         "type": "object"
       },
       "ReferenceChunkResponse": {
@@ -1602,6 +1790,220 @@
           "finished_at"
         ],
         "title": "RunSummary",
+        "type": "object"
+      },
+      "ScenarioCreate": {
+        "properties": {
+          "correctness": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Correctness",
+            "type": "string"
+          },
+          "faithfulness": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Faithfulness",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "relevance": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Relevance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "faithfulness",
+          "relevance",
+          "correctness",
+          "name"
+        ],
+        "title": "ScenarioCreate",
+        "type": "object"
+      },
+      "ScenarioCriteria": {
+        "properties": {
+          "correctness": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Correctness",
+            "type": "string"
+          },
+          "faithfulness": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Faithfulness",
+            "type": "string"
+          },
+          "relevance": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Relevance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "faithfulness",
+          "relevance",
+          "correctness"
+        ],
+        "title": "ScenarioCriteria",
+        "type": "object"
+      },
+      "ScenarioPreviewRequest": {
+        "properties": {
+          "answer": {
+            "minLength": 1,
+            "title": "Answer",
+            "type": "string"
+          },
+          "contexts": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Contexts",
+            "type": "array"
+          },
+          "model_id": {
+            "minLength": 1,
+            "title": "Model Id",
+            "type": "string"
+          },
+          "question": {
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "minLength": 1,
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "model_id",
+          "question",
+          "answer",
+          "reference_answer",
+          "contexts"
+        ],
+        "title": "ScenarioPreviewRequest",
+        "type": "object"
+      },
+      "ScenarioPreviewResponse": {
+        "properties": {
+          "metrics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PreviewMetric"
+            },
+            "propertyNames": {
+              "enum": [
+                "faithfulness",
+                "relevance",
+                "correctness"
+              ]
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "scenario_id": {
+            "title": "Scenario Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scenario_id",
+          "version",
+          "prompt_version",
+          "model_name",
+          "metrics"
+        ],
+        "title": "ScenarioPreviewResponse",
+        "type": "object"
+      },
+      "ScenarioVersion": {
+        "properties": {
+          "correctness": {
+            "title": "Correctness",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "faithfulness": {
+            "title": "Faithfulness",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "relevance": {
+            "title": "Relevance",
+            "type": "string"
+          },
+          "scenario_id": {
+            "title": "Scenario Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scenario_id",
+          "id",
+          "name",
+          "version",
+          "faithfulness",
+          "relevance",
+          "correctness",
+          "prompt_version",
+          "created_at"
+        ],
+        "title": "ScenarioVersion",
         "type": "object"
       },
       "SelectedMatchResponse": {
@@ -2769,6 +3171,70 @@
         ]
       }
     },
+    "/api/v1/online-models": {
+      "get": {
+        "operationId": "list_models_api_v1_online_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OnlineModelSummary"
+                  },
+                  "title": "Response List Models Api V1 Online Models Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Models",
+        "tags": [
+          "online-models"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_v1_online_models_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnlineModelCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineModelSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "online-models"
+        ]
+      }
+    },
     "/api/v1/predictions": {
       "get": {
         "operationId": "list_batches_api_v1_predictions_get",
@@ -3210,6 +3676,241 @@
         "summary": "Export",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/v1/scenarios": {
+      "get": {
+        "operationId": "list_scenarios_api_v1_scenarios_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioVersion"
+                  },
+                  "title": "Response List Scenarios Api V1 Scenarios Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Scenarios",
+        "tags": [
+          "scenarios"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_v1_scenarios_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioVersion"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "scenarios"
+        ]
+      }
+    },
+    "/api/v1/scenarios/template": {
+      "get": {
+        "operationId": "template_api_v1_scenarios_template_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptTemplate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Template",
+        "tags": [
+          "scenarios"
+        ]
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}": {
+      "put": {
+        "operationId": "update_api_v1_scenarios__scenario_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "schema": {
+              "title": "Scenario Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioCriteria"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioVersion"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update",
+        "tags": [
+          "scenarios"
+        ]
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/preview": {
+      "post": {
+        "operationId": "preview_api_v1_scenarios__scenario_id__preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "schema": {
+              "title": "Scenario Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview",
+        "tags": [
+          "scenarios"
+        ]
+      }
+    },
+    "/api/v1/scenarios/{scenario_id}/versions": {
+      "get": {
+        "operationId": "list_versions_api_v1_scenarios__scenario_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "schema": {
+              "title": "Scenario Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioVersion"
+                  },
+                  "title": "Response List Versions Api V1 Scenarios  Scenario Id  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Versions",
+        "tags": [
+          "scenarios"
         ]
       }
     },
