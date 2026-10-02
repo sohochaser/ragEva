@@ -30,3 +30,35 @@ test('compact navigation opens, closes and reaches every workspace', async ({ pa
     await expect(page.getByRole('heading', { name, exact: true, level: 1 })).toBeVisible()
   }
 })
+
+for (const width of [320, 390, 768, 1440]) {
+  test(`every workspace fits the ${width}px viewport`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    const nav = page.getByRole('navigation', { name: '主导航' })
+
+    for (const name of pages) {
+      if (width <= 640) await page.getByRole('button', { name: '打开导航' }).click()
+      await nav.getByRole('button', { name }).click()
+      const heading = page.getByRole('heading', { name, exact: true, level: 1 })
+      await expect(heading).toBeVisible()
+      const bounds = await heading.boundingBox()
+      expect(bounds).not.toBeNull()
+      expect(bounds!.x).toBeGreaterThanOrEqual(0)
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    }
+  })
+}
+
+test('compact menu supports keyboard opening and dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 })
+  await page.goto('/')
+  const menu = page.getByRole('button', { name: '打开导航' })
+  await menu.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('navigation', { name: '主导航' })).toBeHidden()
+  await expect(menu).toBeFocused()
+})

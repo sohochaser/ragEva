@@ -26,3 +26,14 @@ test('core forms and upload dialog remain operable across workspaces', async ({ 
   await expect(page.getByText('管理 API')).toBeVisible()
   await expect(page.getByText('任务 Worker')).toBeVisible()
 })
+
+test('upload dialog remains above compact navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 })
+  await page.goto('/')
+  await page.getByRole('button', { name: '上传原文' }).click()
+  const dialog = page.getByRole('dialog', { name: '上传原文' })
+  await expect(dialog.getByLabel('集合名称')).toBeVisible()
+  await dialog.getByRole('button', { name: '关闭' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('button', { name: '打开导航' })).toBeVisible()
+})

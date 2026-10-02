@@ -147,8 +147,8 @@ h1 { margin: 0; color: var(--ink); font-size: 27px; font-weight: 700; line-heigh
 .chunk-list p { margin: 8px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; color: #3d4650; font-size: 12px; line-height: 1.7; }
 .empty-detail { display: flex; align-items: center; justify-content: center; color: #65707a; font-size: 13px; }
 
-.dialog-backdrop { position: fixed; z-index: 10; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: #1423209c; }
-.import-dialog { width: min(100%, 580px); max-height: calc(100vh - 40px); overflow: auto; border-radius: 6px; background: #fff; box-shadow: 0 20px 70px #0d242544; }
+.dialog-backdrop { position: fixed; z-index: 30; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: #30394299; }
+.import-dialog { width: min(100%, 580px); max-height: calc(100vh - 40px); overflow: auto; border-radius: 6px; background: #fff; box-shadow: 0 20px 70px #30394233; }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 27px 15px; border-bottom: 1px solid #e2e5e8; }
 .dialog-heading h2 { margin: 0; font-size: 20px; }
 .import-dialog form { display: grid; gap: 18px; padding: 22px 27px 25px; }
@@ -485,6 +485,10 @@ h1 { margin: 0; color: var(--ink); font-size: 27px; font-weight: 700; line-heigh
   .brand { gap: 8px; font-size: 18px; }
   .sidebar { padding: 10px 14px; }
   .main-content { padding: 25px 14px; }
+  .generation-header { align-items: flex-start; flex-direction: column; }
+  .run-form { grid-template-columns: minmax(0, 1fr); }
+  .run-form .offline-option { justify-self: start; }
+  .run-metrics { grid-column: 1; }
   .mapping-grid { grid-template-columns: 1fr; }
 }
 .trace-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }

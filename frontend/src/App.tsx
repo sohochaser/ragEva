@@ -1,5 +1,5 @@
 import { Activity, ArrowUpRight, Database, FileInput, Files, Globe2, Menu, RefreshCw, Server, SlidersHorizontal, Sparkles, Workflow, X } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { readHealth, type ServiceState } from './api/health'
 import { DatasetPage } from './datasets/DatasetPage'
@@ -38,12 +38,19 @@ const navigation = [
 
 export function PrimaryNavigation({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuButton = useRef<HTMLButtonElement>(null)
+
+  const closeMenu = () => {
+    setMenuOpen(false)
+    menuButton.current?.focus()
+  }
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" onKeyDown={(event) => { if (event.key === 'Escape' && menuOpen) closeMenu() }}>
       <div className="sidebar-top">
         <div className="brand"><span className="brand-mark">r</span><span>ragEva</span></div>
         <button
+          ref={menuButton}
           className="menu-toggle"
           type="button"
           aria-label={menuOpen ? '关闭导航' : '打开导航'}
@@ -61,7 +68,7 @@ export function PrimaryNavigation({ page, onNavigate }: { page: Page; onNavigate
             type="button"
             className={`nav-item ${page === target ? 'nav-active' : ''}`}
             aria-current={page === target ? 'page' : undefined}
-            onClick={() => { onNavigate(target); setMenuOpen(false) }}
+            onClick={() => { onNavigate(target); if (menuOpen) closeMenu() }}
           >
             <Icon size={17} aria-hidden="true" />{label}
           </button>

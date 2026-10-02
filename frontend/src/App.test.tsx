@@ -22,6 +22,11 @@ describe('PrimaryNavigation', () => {
     await user.click(within(nav).getByRole('button', { name: '评测运行' }))
     expect(onNavigate).toHaveBeenCalledWith('runs')
     expect(screen.getByRole('button', { name: '打开导航' }).getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '打开导航' }))
+    await user.click(screen.getByRole('button', { name: '打开导航' }))
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('button', { name: '打开导航' }).getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '打开导航' }))
   })
 })
 
