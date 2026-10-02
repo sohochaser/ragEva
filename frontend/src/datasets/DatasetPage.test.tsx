@@ -26,7 +26,7 @@ describe('DatasetPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<DatasetPage />)
 
-    const detail = await screen.findByRole('region', { name: '如何退款？' })
+    const detail = await screen.findByRole('region', { name: /如何退款？/ })
     const chunks = within(detail).getAllByRole('listitem')
     expect(chunks).toHaveLength(2)
     expect(chunks[0].textContent).toContain('doc-a')
@@ -43,17 +43,17 @@ describe('DatasetPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
     render(<DatasetPage />)
-    await screen.findByText('暂无数据集')
-    await user.click(screen.getByRole('button', { name: '导入样本' }))
-    const dialog = screen.getByRole('dialog', { name: '导入样本' })
-    await user.type(within(dialog).getByRole('textbox', { name: '数据集名称' }), '测试集')
-    const fileInput = within(dialog).getByLabelText('文件') as HTMLInputElement
+    await screen.findByText(/暂无数据集/)
+    await user.click(screen.getByRole('button', { name: /导入样本/ }))
+    const dialog = screen.getByRole('dialog', { name: /导入样本/ })
+    await user.type(within(dialog).getByRole('textbox', { name: /数据集名称/ }), '测试集')
+    const fileInput = within(dialog).getByLabelText(/文件/) as HTMLInputElement
     await user.upload(fileInput, new File(['invalid'], 'cases.csv', { type: 'text/csv' }))
     expect(fileInput.files).toHaveLength(1)
     fireEvent.submit(dialog.querySelector('form')!)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
 
-    await waitFor(() => expect(within(dialog).getByRole('alert').textContent).toContain('第 2 行 · question：问题不能为空'))
-    expect(screen.getByRole('dialog', { name: '导入样本' })).toBeTruthy()
+    await waitFor(() => expect(within(dialog).getByRole('alert').textContent).toContain('Line 2（第 2 行） · question: 问题不能为空'))
+    expect(screen.getByRole('dialog', { name: /导入样本/ })).toBeTruthy()
   })
 })

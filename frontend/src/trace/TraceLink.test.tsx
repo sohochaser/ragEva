@@ -18,7 +18,7 @@ describe('TraceLink', () => {
 
   it('shows an expired state without a stale link', () => {
     render(<TraceLink trace={{ ...trace, status: 'expired', url: null }} />)
-    expect(screen.getByRole('status').textContent).toBe('Trace 已过期')
+    expect(screen.getByRole('status').textContent).toBe('Trace Expired（Trace 已过期）')
     expect(screen.queryByRole('link')).toBeNull()
   })
 })
