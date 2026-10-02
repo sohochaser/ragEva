@@ -2,6 +2,7 @@ import type { components } from './schema'
 
 export type RunSummary = components['schemas']['RunSummary']
 export type RunCreate = components['schemas']['RunCreate']
+export type RunRescore = components['schemas']['RunRescore']
 export type RunCasesPage = components['schemas']['RunCasesPage']
 export type RunCase = components['schemas']['RunCaseResponse']
 export type CaseStatus = RunCase['status']
@@ -36,6 +37,12 @@ export function exportRunUrl(id: string, format: 'csv' | 'json', status: CaseSta
 
 export async function createRun(request: RunCreate): Promise<RunSummary> {
   return readJson<RunSummary>(await fetch('/api/v1/runs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request),
+  }))
+}
+
+export async function rescoreRun(id: string, request: RunRescore): Promise<RunSummary> {
+  return readJson<RunSummary>(await fetch(`/api/v1/runs/${encodeURIComponent(id)}/rescore`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request),
   }))
 }

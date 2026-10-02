@@ -295,6 +295,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/rescore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rescore */
+        post: operations["rescore_api_v1_runs__run_id__rescore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scenarios": {
         parameters: {
             query?: never;
@@ -948,8 +965,20 @@ export interface components {
         };
         /** RunCreate */
         RunCreate: {
+            /**
+             * Gain Rule Version
+             * @default ordered-linear-v1
+             * @constant
+             */
+            gain_rule_version: "ordered-linear-v1";
             /** Judge Model Id */
             judge_model_id?: string | null;
+            /**
+             * Match Rule Version
+             * @default one-to-one-v1
+             * @constant
+             */
+            match_rule_version: "one-to-one-v1";
             /** Metrics */
             metrics?: ("precision" | "map" | "ndcg")[];
             /**
@@ -981,6 +1010,31 @@ export interface components {
              * @default 0.8
              */
             threshold: number;
+        };
+        /** RunRescore */
+        RunRescore: {
+            /** Gain Rule Version */
+            gain_rule_version?: "ordered-linear-v1" | null;
+            /** Judge Model Id */
+            judge_model_id?: string | null;
+            /** Match Rule Version */
+            match_rule_version?: "one-to-one-v1" | null;
+            /** Metrics */
+            metrics?: ("precision" | "map" | "ndcg")[] | null;
+            /** Mode */
+            mode?: ("retrieval" | "answer" | "both") | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Model Path */
+            model_path?: string | null;
+            /** Offline */
+            offline?: boolean | null;
+            /** Scenario Id */
+            scenario_id?: string | null;
+            /** Scenario Version */
+            scenario_version?: number | null;
+            /** Threshold */
+            threshold?: number | null;
         };
         /** RunSummary */
         RunSummary: {
@@ -1871,6 +1925,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rescore_api_v1_runs__run_id__rescore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunRescore"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
                 };
             };
             /** @description Validation Error */

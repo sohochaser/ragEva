@@ -100,4 +100,38 @@ describe('RunPage', () => {
     expect((await screen.findByRole('region', { name: '回答评分' })).textContent).toContain('回答了问题')
     expect(screen.getByRole('region', { name: '总体指标' }).textContent).toContain('0.700')
   })
+
+  it('rescores a saved run with its prediction batch and edited threshold', async () => {
+    const source = { ...run, status: 'completed', total_count: 1, processed_count: 1,
+      config: { mode: 'retrieval', model_name: 'fake-v1', model_path: null, offline: true,
+        threshold: 0.8, metrics: ['map'], match_rule_version: 'one-to-one-v1', gain_rule_version: 'ordered-linear-v1' } }
+    const rescored = { ...source, id: 'run-2', status: 'queued', processed_count: 0,
+      config: { ...source.config, threshold: 0.9, rescore_of_run_id: 'run-1' } }
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+      if (url === '/api/v1/scenarios' || url === '/api/v1/online-models') return Promise.resolve(new Response('[]'))
+      if (url === '/api/v1/predictions') return Promise.resolve(new Response(JSON.stringify([{ id: 'batch-1', source_filename: 'pred.jsonl', evaluation_type: 'retrieval', dataset_id: 'dataset-1', dataset_version: 1 }])))
+      if (url === '/api/v1/runs') return Promise.resolve(new Response(JSON.stringify([source])))
+      if (url === '/api/v1/runs/run-1/rescore' && options?.method === 'POST') return Promise.resolve(new Response(JSON.stringify(rescored)))
+      if (url.includes('/cases?')) return Promise.resolve(new Response(JSON.stringify({ run_id: url.includes('run-2') ? 'run-2' : 'run-1', total: 0, offset: 0, limit: 100, cases: [] })))
+      if (url === '/api/v1/runs/run-2') return Promise.resolve(new Response(JSON.stringify(rescored)))
+      return Promise.resolve(new Response(JSON.stringify(source)))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+    render(<RunPage />)
+    const detail = await screen.findByRole('region', { name: '运行详情' })
+    await user.click(await within(detail).findByRole('button', { name: '复评' }))
+    expect(screen.getByRole('combobox', { name: '预测批次' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByText('复评运行 run-1')).toBeTruthy()
+    const threshold = screen.getByRole('spinbutton', { name: '相似度阈值' })
+    await user.clear(threshold)
+    await user.type(threshold, '0.9')
+    await user.click(screen.getByRole('button', { name: '重新评分' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/runs/run-1/rescore', expect.objectContaining({ method: 'POST' })))
+    const submitted = fetchMock.mock.calls.find(([url]) => url === '/api/v1/runs/run-1/rescore')
+    const payload = JSON.parse(String(submitted?.[1]?.body))
+    expect(payload.threshold).toBe(0.9)
+    expect(payload).not.toHaveProperty('prediction_batch_id')
+    expect((await screen.findByRole('button', { name: '源运行 run-1' })).textContent).toContain('run-1')
+  })
 })
