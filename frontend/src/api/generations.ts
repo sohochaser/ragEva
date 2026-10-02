@@ -1,4 +1,5 @@
 import type { components } from './schema'
+import type { VersionSummary } from './datasets'
 
 export type GenerationRun = components['schemas']['GenerationSummary']
 export type GenerationCreate = components['schemas']['GenerationCreate']
@@ -7,6 +8,13 @@ export type CandidateReviewRequest = components['schemas']['CandidateReviewReque
 export type CandidateRevision = components['schemas']['CandidateRevision']
 export type CandidateReviewIssue = components['schemas']['CandidateReviewIssue']
 export type DuplicateCheck = components['schemas']['DuplicateCheck']
+export type PublicationRequest = components['schemas']['PublicationRequest']
+
+export class CandidatePublicationError extends Error {
+  constructor(public issues: components['schemas']['ImportIssueResponse'][]) {
+    super('候选发布失败')
+  }
+}
 
 export class CandidateReviewError extends Error {
   constructor(public issues: CandidateReviewIssue[]) {
@@ -39,6 +47,16 @@ export const allowSuspectedCandidate = (id: string, check: DuplicateCheck, reaso
     body: JSON.stringify({ check_id: check.id, expected_revision: check.revision, reason }),
   },
 ))
+export async function publishCandidates(body: PublicationRequest): Promise<VersionSummary> {
+  const response = await fetch('/api/v1/candidates/publish', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  if (response.status === 422) {
+    const payload = await response.json() as { issues?: components['schemas']['ImportIssueResponse'][] }
+    if (payload.issues) throw new CandidatePublicationError(payload.issues)
+  }
+  return readJson<VersionSummary>(Promise.resolve(response))
+}
 export async function reviewCandidate(id: string, body: CandidateReviewRequest): Promise<GeneratedCandidate> {
   const response = await fetch(`/api/v1/candidates/${encodeURIComponent(id)}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),

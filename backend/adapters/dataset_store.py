@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS evaluation_cases (
     PRIMARY KEY(version_id, case_id),
     UNIQUE(version_id, position)
 );
+CREATE TABLE IF NOT EXISTS dataset_version_sources (
+    version_id TEXT NOT NULL REFERENCES dataset_versions(id),
+    collection_id TEXT NOT NULL,
+    PRIMARY KEY(version_id, collection_id)
+);
 """
 
 
@@ -124,7 +129,17 @@ class DatasetStore:
             "case_count": len(cases),
             "source_filename": filename,
             "created_at": created_at,
+            "source_collection_ids": [],
         }
+
+    @staticmethod
+    def _source_collection_ids(connection: sqlite3.Connection, version_id: str) -> list[str]:
+        rows = connection.execute(
+            "SELECT collection_id FROM dataset_version_sources "
+            "WHERE version_id = ? ORDER BY collection_id",
+            (version_id,),
+        ).fetchall()
+        return [row["collection_id"] for row in rows]
 
     def list_datasets(self) -> list[dict[str, Any]]:
         with closing(self._connect()) as connection:
@@ -151,7 +166,13 @@ class DatasetStore:
                 "FROM dataset_versions WHERE dataset_id = ? ORDER BY version DESC",
                 (dataset_id,),
             ).fetchall()
-        return [dict(row) for row in rows]
+            return [
+                {
+                    **dict(row),
+                    "source_collection_ids": self._source_collection_ids(connection, row["id"]),
+                }
+                for row in rows
+            ]
 
     def get_version(self, dataset_id: str, version: int, offset: int, limit: int) -> dict[str, Any]:
         with closing(self._connect()) as connection:
@@ -167,8 +188,10 @@ class DatasetStore:
                 "FROM evaluation_cases WHERE version_id = ? ORDER BY position LIMIT ? OFFSET ?",
                 (row["id"], limit, offset),
             ).fetchall()
+            source_collection_ids = self._source_collection_ids(connection, row["id"])
         return {
             **dict(row),
+            "source_collection_ids": source_collection_ids,
             "total": row["case_count"],
             "offset": offset,
             "limit": limit,

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.adapters.dataset_files import read_rows
 from backend.adapters.dataset_store import DatasetNotFound, DatasetStore
@@ -56,6 +56,7 @@ class VersionSummary(BaseModel):
     case_count: int
     source_filename: str
     created_at: str
+    source_collection_ids: list[str] = Field(default_factory=list)
 
 
 class VersionDetail(VersionSummary):

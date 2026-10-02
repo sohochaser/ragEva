@@ -490,11 +490,20 @@ class GenerationStore(DocumentStore):
         ]
         current_candidates = {other["id"]: other for other in others}
         published = connection.execute(
-            "SELECT * FROM published_candidate_cases WHERE collection_id = ? "
-            "ORDER BY published_at, version_id, case_id",
+            "SELECT * FROM published_candidate_cases WHERE collection_id = ? ORDER BY rowid",
             (candidate["collection_id"],),
         ).fetchall()
+        seen_published: set[tuple[str, str, str, str]] = set()
         for item in published:
+            fingerprint = (
+                item["candidate_id"],
+                item["question"],
+                item["reference_answer"],
+                item["reference_chunks_json"],
+            )
+            if fingerprint in seen_published:
+                continue
+            seen_published.add(fingerprint)
             snapshot = {
                 "source_kind": "published_case",
                 "source_id": f"{item['version_id']}:{item['case_id']}",

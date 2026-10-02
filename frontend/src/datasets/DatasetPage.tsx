@@ -117,7 +117,10 @@ function CaseDetail({ item }: { item: EvaluationCase }) {
   )
 }
 
-export function DatasetPage() {
+export function DatasetPage({ active = true, focusVersion }: {
+  active?: boolean
+  focusVersion?: { datasetId: string; version: number } | null
+}) {
   const [datasets, setDatasets] = useState<DatasetSummary[]>([])
   const [datasetId, setDatasetId] = useState<string | null>(null)
   const [versions, setVersions] = useState<VersionSummary[]>([])
@@ -142,28 +145,37 @@ export function DatasetPage() {
     }
   }, [])
 
-  useEffect(() => { void reload() }, [reload])
+  useEffect(() => { if (active) void reload() }, [active, reload])
   useEffect(() => {
+    if (!active || !focusVersion) return
+    setDatasetId(focusVersion.datasetId)
+    setVersion(focusVersion.version)
+    setOffset(0)
+    setDetail(null)
+  }, [active, focusVersion])
+  useEffect(() => {
+    if (!active) return
     if (!datasetId) { setVersions([]); setVersion(null); setDetail(null); return }
-    let active = true
+    let alive = true
     void fetchVersions(datasetId).then((items) => {
-      if (!active) return
+      if (!alive) return
       setVersions(items)
       setVersion((current) => current && items.some((item) => item.version === current) ? current : items[0]?.version ?? null)
-    }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '无法读取版本') })
-    return () => { active = false }
-  }, [datasetId])
+    }).catch((cause: unknown) => { if (alive) setError(cause instanceof Error ? cause.message : '无法读取版本') })
+    return () => { alive = false }
+  }, [active, datasetId])
   useEffect(() => {
+    if (!active) return
     if (!datasetId || version === null) { setDetail(null); return }
-    let active = true
+    let alive = true
     void fetchVersion(datasetId, version, offset).then((result) => {
-      if (!active) return
+      if (!alive) return
       setDetail(result)
       setCaseId((current) => current && result.cases.some((item) => item.case_id === current) ? current : result.cases[0]?.case_id ?? null)
       setError('')
-    }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '无法读取样本') })
-    return () => { active = false }
-  }, [datasetId, version, offset])
+    }).catch((cause: unknown) => { if (alive) setError(cause instanceof Error ? cause.message : '无法读取样本') })
+    return () => { alive = false }
+  }, [active, datasetId, version, offset])
 
   const selectedDataset = datasets.find((item) => item.id === datasetId)
   const selectedCase = detail?.cases.find((item) => item.case_id === caseId)
@@ -194,7 +206,7 @@ export function DatasetPage() {
             {datasets.map((dataset) => <button className={`dataset-row ${dataset.id === datasetId ? 'active' : ''}`} type="button" key={dataset.id} onClick={() => { setDatasetId(dataset.id); setVersion(null); setOffset(0); setDetail(null) }}><strong>{dataset.name}</strong><span>{dataset.latest_case_count} 条样本 · {dataset.version_count} 个版本</span></button>)}
           </aside>
           <div className="dataset-workspace">
-            <div className="dataset-toolbar"><div><h2>{selectedDataset?.name}</h2><span>{detail?.case_count ?? selectedDataset?.latest_case_count ?? 0} 条样本</span></div><label className="version-picker">版本<select aria-label="版本" value={version ?? ''} onChange={(event) => { setVersion(Number(event.target.value)); setOffset(0); setDetail(null) }}>{versions.map((item) => <option key={item.id} value={item.version}>v{item.version}</option>)}</select></label></div>
+            <div className="dataset-toolbar"><div><h2>{selectedDataset?.name}</h2><span>{detail?.case_count ?? selectedDataset?.latest_case_count ?? 0} 条样本</span>{detail && (detail.source_collection_ids ?? []).length > 0 && <p className="dataset-source-ids">来源集合 {(detail.source_collection_ids ?? []).map((id) => <code key={id}>{id}</code>)}</p>}</div><label className="version-picker">版本<select aria-label="版本" value={version ?? ''} onChange={(event) => { setVersion(Number(event.target.value)); setOffset(0); setDetail(null) }}>{versions.map((item) => <option key={item.id} value={item.version}>v{item.version}</option>)}</select></label></div>
             <div className="case-workspace">
               <section className="case-list" aria-label="样本列表">
                 <div className="pane-heading"><h3>样本</h3><span>{detail?.total ?? 0}</span></div>

@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/candidates/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish Candidates */
+        post: operations["publish_candidates_api_v1_candidates_publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/candidates/{candidate_id}": {
         parameters: {
             query?: never;
@@ -1433,6 +1450,17 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** PublicationRequest */
+        PublicationRequest: {
+            /** Candidate Ids */
+            candidate_ids: string[];
+            /** Dataset Id */
+            dataset_id?: string | null;
+            /** Dataset Name */
+            dataset_name?: string | null;
+            /** Expected Version */
+            expected_version?: number | null;
+        };
         /** ReferenceChunkResponse */
         ReferenceChunkResponse: {
             /** Document Id */
@@ -1997,6 +2025,8 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+            /** Source Collection Ids */
+            source_collection_ids?: string[];
             /** Source Filename */
             source_filename: string;
             /** Total */
@@ -2014,6 +2044,8 @@ export interface components {
             dataset_id: string;
             /** Id */
             id: string;
+            /** Source Collection Ids */
+            source_collection_ids?: string[];
             /** Source Filename */
             source_filename: string;
             /** Version */
@@ -2028,6 +2060,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    publish_candidates_api_v1_candidates_publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionSummary"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportFailure"];
+                };
+            };
+        };
+    };
     get_candidate_api_v1_candidates__candidate_id__get: {
         parameters: {
             query?: never;

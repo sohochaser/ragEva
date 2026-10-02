@@ -304,6 +304,23 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .generation-results { min-width: 0; }
 .generation-count { color: #326e62; font-size: 12px; font-weight: 650; text-align: right; }
 .generation-shortfall { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 13px 21px; border-bottom: 1px solid #e8edeb; background: #fff8ed; color: #83592d; font-size: 12px; }
+.candidate-publish { padding: 15px 21px; border-bottom: 1px solid #e8edeb; background: #fbfdfc; }
+.candidate-publish-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.candidate-publish-heading h3 { margin: 0; color: #304941; font-size: 13px; }
+.candidate-publish-heading span { color: #6a7b77; font-size: 12px; }
+.candidate-publish-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 12px; max-height: 132px; margin: 11px 0; overflow: auto; }
+.candidate-publish-list label { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12px; cursor: pointer; }
+.candidate-publish-list input { flex: 0 0 auto; accent-color: #187666; }
+.candidate-publish-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.candidate-publish-target { display: flex; align-items: end; gap: 12px; }
+.candidate-publish-target .form-group { flex: 1; min-width: 0; }
+.candidate-publish-target input, .candidate-publish-target select { width: 100%; min-width: 0; }
+.candidate-publish-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.candidate-publish .form-error { margin: 10px 0 0; }
+.candidate-publish-success { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px; color: #207159; font-size: 12px; font-weight: 650; }
+.candidate-publish-success button { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #187666; font-weight: 650; cursor: pointer; }
+.dataset-source-ids { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 5px 0 0; color: #6a7b77; font-size: 11px; }
+.dataset-source-ids code { overflow-wrap: anywhere; }
 .generation-candidates { margin: 0; padding: 0; list-style: none; }
 .generation-candidate { padding: 21px; border-bottom: 1px solid #e8edeb; }
 .generation-candidate-heading { display: flex; justify-content: space-between; gap: 12px; color: #677b75; font-size: 11px; }
@@ -440,6 +457,9 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .generation-list .dataset-row { width: 175px; min-width: 175px; }
   .generation-evidence > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
   .candidate-review-fields { grid-template-columns: minmax(0, 1fr); }
+  .candidate-publish-list { grid-template-columns: minmax(0, 1fr); }
+  .candidate-publish-target { flex-wrap: wrap; }
+  .candidate-publish-target .form-group { flex-basis: 100%; }
   .candidate-review-actions { justify-content: flex-start; }
 }
 

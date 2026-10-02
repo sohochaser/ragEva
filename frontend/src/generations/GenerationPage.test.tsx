@@ -39,6 +39,7 @@ it('creates a generation and shows partial candidates with source evidence', asy
       },
       calls: [{ id: 'usage-1', owner_type: 'generation', owner_id: 'run-1', operation: 'generation', case_id: '2', model_id: 'generator-v1', input_tokens: 24, input_source: 'estimated', output_tokens: null, output_source: 'unknown', tokenizer: 'bytelevel-v1', created_at: '2026-10-02' }],
     })))
+    if (url === '/api/v1/datasets') return Promise.resolve(new Response('[]'))
     return Promise.reject(new Error(`Unexpected URL ${url}`))
   })
   vi.stubGlobal('fetch', fetchMock)
