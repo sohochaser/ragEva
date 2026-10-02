@@ -3,14 +3,22 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.adapters.document_store import CollectionNotFound
-from backend.adapters.generation_store import GenerationNotFound, GenerationStore
+from backend.adapters.generation_store import (
+    CandidateNotFound,
+    GenerationNotFound,
+    GenerationStore,
+    InvalidReview,
+    RevisionConflict,
+)
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
 from backend.adapters.usage_store import UsageStore
 from backend.api.usage import UsageSummary
 from backend.config import Settings
+from backend.domain.candidate_review import ReviewAction
 from backend.domain.generation import PROMPT_VERSION, multi_chunk_target
 from backend.health import worker_is_ready
 from backend.worker.queue import generate_candidates_task
@@ -61,6 +69,8 @@ class CandidateChunk(BaseModel):
 class GeneratedCandidate(BaseModel):
     id: str
     run_id: str
+    collection_id: str
+    revision: int
     slot_index: int
     question: str
     reference_answer: str
@@ -71,6 +81,37 @@ class GeneratedCandidate(BaseModel):
     prompt_version: str
     model_name: str
     created_at: str
+
+
+class CandidateReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=0)
+    collection_id: str = Field(min_length=1)
+    question: str = Field(max_length=2000)
+    reference_answer: str = Field(max_length=10000)
+    support_positions: list[int] = Field(max_length=1000)
+    action: ReviewAction
+
+
+class CandidateRevision(BaseModel):
+    revision: int
+    question: str
+    reference_answer: str
+    reference_chunks: list[CandidateChunk]
+    support_positions: list[int]
+    status: str
+    created_at: str
+
+
+class CandidateReviewIssue(BaseModel):
+    field: str
+    message: str
+
+
+class CandidateReviewFailure(BaseModel):
+    error: str
+    issues: list[CandidateReviewIssue]
 
 
 def create_generation_router(settings: Settings) -> APIRouter:
@@ -151,5 +192,45 @@ def create_generation_router(settings: Settings) -> APIRouter:
         except GenerationNotFound as exc:
             raise HTTPException(status_code=404, detail="生成任务不存在") from exc
         return usages.for_owner("generation", run_id)
+
+    @router.get("/api/v1/candidates/{candidate_id}", response_model=GeneratedCandidate)
+    def get_candidate(candidate_id: str) -> dict[str, Any]:
+        try:
+            return store.get_candidate(candidate_id)
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail="候选不存在") from exc
+
+    @router.get(
+        "/api/v1/candidates/{candidate_id}/revisions",
+        response_model=list[CandidateRevision],
+    )
+    def get_candidate_revisions(candidate_id: str) -> list[dict[str, Any]]:
+        try:
+            return store.revisions(candidate_id)
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail="候选不存在") from exc
+
+    @router.patch(
+        "/api/v1/candidates/{candidate_id}",
+        response_model=GeneratedCandidate,
+        responses={422: {"model": CandidateReviewFailure}},
+    )
+    def review_candidate(
+        candidate_id: str, request: CandidateReviewRequest
+    ) -> dict[str, Any] | JSONResponse:
+        try:
+            return store.review(candidate_id, **request.model_dump())
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail="候选不存在") from exc
+        except RevisionConflict as exc:
+            raise HTTPException(status_code=409, detail="候选已被其他审核操作修改，请刷新") from exc
+        except InvalidReview as exc:
+            return JSONResponse(
+                status_code=422,
+                content=CandidateReviewFailure(
+                    error="validation_failed",
+                    issues=[CandidateReviewIssue(**vars(issue)) for issue in exc.issues],
+                ).model_dump(),
+            )
 
     return router

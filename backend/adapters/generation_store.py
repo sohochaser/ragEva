@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from backend.adapters.document_store import DocumentStore
 from backend.adapters.generation_model import GeneratedCase
+from backend.domain.candidate_review import ReviewAction, ReviewIssue, validate_review
 from backend.domain.generation import PROMPT_VERSION, GenerationSlot, reference_chunks
 
 SCHEMA = """
@@ -54,11 +55,42 @@ CREATE TABLE IF NOT EXISTS generated_candidates (
     created_at TEXT NOT NULL,
     UNIQUE(run_id, slot_index)
 );
+CREATE TABLE IF NOT EXISTS candidate_revisions (
+    candidate_id TEXT NOT NULL REFERENCES generated_candidates(id),
+    revision INTEGER NOT NULL,
+    question TEXT NOT NULL,
+    reference_answer TEXT NOT NULL,
+    reference_chunks_json TEXT NOT NULL,
+    support_positions_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(candidate_id, revision)
+);
+"""
+
+CANDIDATE_SELECT = """
+SELECT c.*, r.collection_id,
+       COALESCE((SELECT MAX(v.revision) FROM candidate_revisions v WHERE v.candidate_id = c.id), 0)
+       AS revision
+FROM generated_candidates c JOIN generation_runs r ON r.id = c.run_id
 """
 
 
 class GenerationNotFound(Exception):
     pass
+
+
+class CandidateNotFound(Exception):
+    pass
+
+
+class RevisionConflict(Exception):
+    pass
+
+
+class InvalidReview(Exception):
+    def __init__(self, issues: list[ReviewIssue]) -> None:
+        self.issues = issues
 
 
 class GenerationStore(DocumentStore):
@@ -167,21 +199,37 @@ class GenerationStore(DocumentStore):
             )
             if case is not None:
                 chunks = reference_chunks(case.support_positions, slot.sources, slot.multi_chunk)
+                candidate_id = str(uuid4())
+                created_at = datetime.now(UTC).isoformat()
+                chunks_json = json.dumps(chunks, ensure_ascii=False)
+                positions_json = json.dumps(case.support_positions)
                 connection.execute(
                     "INSERT INTO generated_candidates VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
-                        str(uuid4()),
+                        candidate_id,
                         run_id,
                         slot.index,
                         case.question,
                         case.reference_answer,
-                        json.dumps(chunks, ensure_ascii=False),
-                        json.dumps(case.support_positions),
+                        chunks_json,
+                        positions_json,
                         int(slot.multi_chunk),
                         "pending_review",
                         PROMPT_VERSION,
                         model_name,
-                        datetime.now(UTC).isoformat(),
+                        created_at,
+                    ),
+                )
+                connection.execute(
+                    "INSERT INTO candidate_revisions "
+                    "VALUES (?, 0, ?, ?, ?, ?, 'pending_review', ?)",
+                    (
+                        candidate_id,
+                        case.question,
+                        case.reference_answer,
+                        chunks_json,
+                        positions_json,
+                        created_at,
                     ),
                 )
             connection.execute(
@@ -227,14 +275,147 @@ class GenerationStore(DocumentStore):
         self.get(run_id)
         with closing(self._connect()) as connection:
             rows = connection.execute(
-                "SELECT * FROM generated_candidates WHERE run_id = ? ORDER BY slot_index",
+                CANDIDATE_SELECT + " WHERE c.run_id = ? ORDER BY c.slot_index",
                 (run_id,),
             ).fetchall()
-        candidates = []
-        for row in rows:
-            item = dict(row)
-            item["reference_chunks"] = json.loads(item.pop("reference_chunks_json"))
-            item["support_positions"] = json.loads(item.pop("support_positions_json"))
-            item["multi_chunk"] = bool(item["multi_chunk"])
-            candidates.append(item)
-        return candidates
+        return [self._candidate(row) for row in rows]
+
+    @staticmethod
+    def _candidate(row: sqlite3.Row) -> dict[str, Any]:
+        item = dict(row)
+        item["reference_chunks"] = json.loads(item.pop("reference_chunks_json"))
+        item["support_positions"] = json.loads(item.pop("support_positions_json"))
+        item["multi_chunk"] = bool(item["multi_chunk"])
+        return item
+
+    def get_candidate(self, candidate_id: str) -> dict[str, Any]:
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                CANDIDATE_SELECT + " WHERE c.id = ?", (candidate_id,)
+            ).fetchone()
+        if row is None:
+            raise CandidateNotFound(candidate_id)
+        return self._candidate(row)
+
+    def revisions(self, candidate_id: str) -> list[dict[str, Any]]:
+        candidate = self.get_candidate(candidate_id)
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT * FROM candidate_revisions WHERE candidate_id = ? ORDER BY revision",
+                (candidate_id,),
+            ).fetchall()
+        if not rows:
+            return [self._revision_snapshot(candidate, 0, candidate["created_at"])]
+        return [self._decode_revision(row) for row in rows]
+
+    @staticmethod
+    def _revision_snapshot(
+        candidate: dict[str, Any], revision: int, created_at: str
+    ) -> dict[str, Any]:
+        return {
+            "revision": revision,
+            "question": candidate["question"],
+            "reference_answer": candidate["reference_answer"],
+            "reference_chunks": candidate["reference_chunks"],
+            "support_positions": candidate["support_positions"],
+            "status": candidate["status"],
+            "created_at": created_at,
+        }
+
+    @staticmethod
+    def _decode_revision(row: sqlite3.Row) -> dict[str, Any]:
+        item = dict(row)
+        item.pop("candidate_id")
+        item["reference_chunks"] = json.loads(item.pop("reference_chunks_json"))
+        item["support_positions"] = json.loads(item.pop("support_positions_json"))
+        return item
+
+    def review(
+        self,
+        candidate_id: str,
+        *,
+        expected_revision: int,
+        collection_id: str,
+        question: str,
+        reference_answer: str,
+        support_positions: list[int],
+        action: ReviewAction,
+    ) -> dict[str, Any]:
+        current = self.get_candidate(candidate_id)
+        source = self.get_collection(current["collection_id"])
+        with closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                CANDIDATE_SELECT + " WHERE c.id = ?", (candidate_id,)
+            ).fetchone()
+            if row is None:
+                raise CandidateNotFound(candidate_id)
+            candidate = self._candidate(row)
+            if expected_revision != candidate["revision"]:
+                raise RevisionConflict(candidate_id)
+            chunks, issues = validate_review(
+                question=question,
+                reference_answer=reference_answer,
+                support_positions=support_positions,
+                collection_id=collection_id,
+                source_collection_id=candidate["collection_id"],
+                collection_chunks=source["chunks"],
+                action=action,
+            )
+            if issues:
+                raise InvalidReview(issues)
+            if candidate["revision"] == 0:
+                existing = connection.execute(
+                    "SELECT 1 FROM candidate_revisions WHERE candidate_id = ? AND revision = 0",
+                    (candidate_id,),
+                ).fetchone()
+                if existing is None:
+                    self._insert_revision(
+                        connection,
+                        candidate_id,
+                        self._revision_snapshot(candidate, 0, candidate["created_at"]),
+                    )
+            revision = candidate["revision"] + 1
+            now = datetime.now(UTC).isoformat()
+            status = {"save": "pending_review", "approve": "approved", "reject": "rejected"}[action]
+            snapshot = {
+                "revision": revision,
+                "question": question.strip(),
+                "reference_answer": reference_answer.strip(),
+                "reference_chunks": chunks,
+                "support_positions": support_positions,
+                "status": status,
+                "created_at": now,
+            }
+            connection.execute(
+                "UPDATE generated_candidates SET question = ?, reference_answer = ?, "
+                "reference_chunks_json = ?, support_positions_json = ?, status = ? WHERE id = ?",
+                (
+                    snapshot["question"],
+                    snapshot["reference_answer"],
+                    json.dumps(chunks, ensure_ascii=False),
+                    json.dumps(support_positions),
+                    status,
+                    candidate_id,
+                ),
+            )
+            self._insert_revision(connection, candidate_id, snapshot)
+        return self.get_candidate(candidate_id)
+
+    @staticmethod
+    def _insert_revision(
+        connection: sqlite3.Connection, candidate_id: str, snapshot: dict[str, Any]
+    ) -> None:
+        connection.execute(
+            "INSERT INTO candidate_revisions VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                candidate_id,
+                snapshot["revision"],
+                snapshot["question"],
+                snapshot["reference_answer"],
+                json.dumps(snapshot["reference_chunks"], ensure_ascii=False),
+                json.dumps(snapshot["support_positions"]),
+                snapshot["status"],
+                snapshot["created_at"],
+            ),
+        )

@@ -28,7 +28,7 @@ US-009 扩展目标协议为 SSE：`backend/adapters/sse_target.py` 使用 `http
 
 US-014 的 `backend/adapters/document_text.py` 使用 python-docx 提取 DOCX 的正文和表格文本，使用 pypdf 提取文本 PDF 的页面内容。提取出的文本交给同一切块校验流程；扫描版和受保护 PDF、损坏文件以文件级错误拒绝，原始 BLOB 与校验值保持上传时的内容。原文下载仍由 US-016 接入。
 
-US-017 的生成边界：`backend/domain/generation.py` 按固定顺序分配单/多 chunk 配额与来源；`backend/adapters/generation_model.py` 调用在线 OpenAI 兼容模型，要求结果只引用本次提供的 chunk 位置；`backend/adapters/generation_store.py` 原子保存任务、尝试和只读待审核候选。Huey Worker 以任务状态原子领取防止重复执行，最多 4 个并发模型请求，受任务最大调用次数约束。失败响应只保存诊断代码，合格候选仍可查看；模型凭据沿用受保护的在线模型配置，不进入任务快照。US-018 接续候选审核与编辑。
+US-017 的生成边界：`backend/domain/generation.py` 按固定顺序分配单/多 chunk 配额与来源；`backend/adapters/generation_model.py` 调用在线 OpenAI 兼容模型，要求结果只引用本次提供的 chunk 位置；`backend/adapters/generation_store.py` 原子保存任务、尝试和待审核候选。Huey Worker 以任务状态原子领取防止重复执行，最多 4 个并发模型请求，受任务最大调用次数约束。失败响应只保存诊断代码，合格候选仍可查看；模型凭据沿用受保护的在线模型配置，不进入任务快照。US-018 的 `backend/domain/candidate_review.py` 校验审核字段和当前集合来源，存储层原子保存候选状态及完整修订快照；API 以修订号拒绝覆盖并发编辑，React 生成页提供来源选择、排序、批准和历史查看。
 
 ```text
 React + TypeScript

@@ -315,6 +315,38 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .generation-evidence > div { display: grid; grid-template-columns: 105px minmax(0, 1fr); gap: 12px; font-size: 12px; }
 .generation-evidence code { overflow-wrap: anywhere; color: #586c66; }
 .generation-evidence p { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; color: #41534e; line-height: 1.5; }
+.candidate-review { margin-top: 17px; border-top: 1px solid #e6ecea; }
+.candidate-review-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 13px; }
+.candidate-review-toolbar .secondary-button { min-height: 31px; padding: 5px 10px; font-size: 12px; }
+.review-status { font-size: 12px; font-weight: 650; }
+.review-status-pending_review { color: #986027; }
+.review-status-approved { color: #187666; }
+.review-status-rejected { color: #a34949; }
+.candidate-review .form-error { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.candidate-review-form { display: grid; gap: 17px; padding-top: 17px; }
+.candidate-review-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.candidate-review-fields textarea { width: 100%; min-height: 92px; padding: 9px 10px; border: 1px solid #cbd8d4; border-radius: 4px; background: #fff; color: #263732; resize: vertical; font-size: 13px; line-height: 1.5; }
+.candidate-review-sources h4 { margin: 0 0 9px; color: #526960; font-size: 12px; }
+.candidate-review-sources ol { margin: 0; padding: 0; list-style: none; }
+.candidate-review-sources li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 10px 0; border-top: 1px solid #edf1ef; }
+.candidate-review-sources li span { margin-right: 8px; color: #647971; font-size: 11px; }
+.candidate-review-sources li code { overflow-wrap: anywhere; color: #42695f; font-size: 11px; }
+.candidate-review-sources li p { margin: 5px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; color: #3d504a; font-size: 12px; line-height: 1.5; }
+.candidate-review-tools { display: flex; gap: 2px; }
+.candidate-review-tools .icon-button { width: 29px; height: 29px; }
+.candidate-review-add { display: flex; gap: 9px; margin-top: 10px; }
+.candidate-review-add select { min-width: 0; flex: 1; padding: 8px 10px; border: 1px solid #cbd8d4; border-radius: 4px; background: #fff; color: #263732; font-size: 12px; }
+.candidate-review-add .secondary-button { flex: 0 0 auto; }
+.candidate-review-issues { margin: 0; padding: 10px 12px 10px 29px; background: #fff4f1; color: #9b4141; font-size: 12px; }
+.candidate-review-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.candidate-review-history { border-top: 1px solid #e6ecea; padding-top: 12px; color: #52665f; font-size: 12px; }
+.candidate-review-history summary { cursor: pointer; font-weight: 650; }
+.candidate-review-history ol { margin: 10px 0 0; padding-left: 18px; }
+.candidate-review-history li { padding: 7px 0; }
+.candidate-review-history time { margin-left: 12px; color: #788a83; }
+.candidate-review-history p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.candidate-review-history ul { margin: 5px 0 0; padding-left: 17px; }
+.candidate-review-history ul li { padding: 3px 0; overflow-wrap: anywhere; }
 
 @media (max-width: 1200px) {
   .run-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -385,6 +417,8 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .generation-list .pane-heading { display: none; }
   .generation-list .dataset-row { width: 175px; min-width: 175px; }
   .generation-evidence > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .candidate-review-fields { grid-template-columns: minmax(0, 1fr); }
+  .candidate-review-actions { justify-content: flex-start; }
 }
 
 @media (max-width: 390px) {

@@ -367,6 +367,146 @@
         "title": "CandidateResponse",
         "type": "object"
       },
+      "CandidateReviewFailure": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateReviewIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "issues"
+        ],
+        "title": "CandidateReviewFailure",
+        "type": "object"
+      },
+      "CandidateReviewIssue": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "CandidateReviewIssue",
+        "type": "object"
+      },
+      "CandidateReviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "save",
+              "approve",
+              "reject"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "collection_id": {
+            "minLength": 1,
+            "title": "Collection Id",
+            "type": "string"
+          },
+          "expected_revision": {
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "question": {
+            "maxLength": 2000,
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "maxLength": 10000,
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "support_positions": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "title": "Support Positions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "collection_id",
+          "question",
+          "reference_answer",
+          "support_positions",
+          "action"
+        ],
+        "title": "CandidateReviewRequest",
+        "type": "object"
+      },
+      "CandidateRevision": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "reference_chunks": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateChunk"
+            },
+            "title": "Reference Chunks",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "support_positions": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Support Positions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "revision",
+          "question",
+          "reference_answer",
+          "reference_chunks",
+          "support_positions",
+          "status",
+          "created_at"
+        ],
+        "title": "CandidateRevision",
+        "type": "object"
+      },
       "CaseResponse": {
         "properties": {
           "case_id": {
@@ -773,6 +913,10 @@
       },
       "GeneratedCandidate": {
         "properties": {
+          "collection_id": {
+            "title": "Collection Id",
+            "type": "string"
+          },
           "created_at": {
             "title": "Created At",
             "type": "string"
@@ -808,6 +952,10 @@
             "title": "Reference Chunks",
             "type": "array"
           },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -831,6 +979,8 @@
         "required": [
           "id",
           "run_id",
+          "collection_id",
+          "revision",
           "slot_index",
           "question",
           "reference_answer",
@@ -3498,6 +3648,144 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/candidates/{candidate_id}": {
+      "get": {
+        "operationId": "get_candidate_api_v1_candidates__candidate_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedCandidate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Candidate",
+        "tags": [
+          "generations"
+        ]
+      },
+      "patch": {
+        "operationId": "review_candidate_api_v1_candidates__candidate_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedCandidate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReviewFailure"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Review Candidate",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/revisions": {
+      "get": {
+        "operationId": "get_candidate_revisions_api_v1_candidates__candidate_id__revisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CandidateRevision"
+                  },
+                  "title": "Response Get Candidate Revisions Api V1 Candidates  Candidate Id  Revisions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Candidate Revisions",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
     "/api/v1/datasets": {
       "get": {
         "operationId": "list_datasets_api_v1_datasets_get",
