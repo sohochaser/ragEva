@@ -8,7 +8,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
-button, input, select { font: inherit; }
+button, input, select, textarea { font: inherit; }
 a { color: inherit; }
 
 .app-shell { display: flex; min-height: 100vh; }
@@ -237,11 +237,32 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .target-job-case span { overflow-wrap: anywhere; }
 .target-job-case small { color: #6a7b77; }
 
+.scenario-models { margin: 26px 0; }
+.scenario-model-form { display: grid; grid-template-columns: minmax(130px, .8fr) minmax(220px, 1.5fr) minmax(130px, .8fr) auto; align-items: end; gap: 12px; }
+.scenario-layout { display: grid; grid-template-columns: minmax(190px, 235px) minmax(0, 1fr); border: 1px solid #dce3e2; border-radius: 6px; background: #fff; overflow: hidden; }
+.scenario-list { min-width: 0; border-right: 1px solid #e1e7e5; background: #fafdfc; }
+.scenario-main { min-width: 0; }
+.scenario-form, .scenario-preview { display: grid; gap: 15px; padding: 21px; }
+.scenario-form { border-bottom: 1px solid #e3e9e7; }
+.scenario-form .primary-button, .scenario-preview .secondary-button { justify-self: start; }
+.scenario-form textarea, .scenario-preview textarea { width: 100%; min-height: 76px; padding: 9px 10px; border: 1px solid #cbd8d4; border-radius: 4px; background: #fff; color: #263732; resize: vertical; font-size: 13px; line-height: 1.5; }
+.scenario-form textarea:focus-visible, .scenario-preview textarea:focus-visible { outline: 2px solid #147f71; outline-offset: 2px; }
+.scenario-template { padding: 15px 21px; border-bottom: 1px solid #e3e9e7; color: #536661; font-size: 12px; }
+.scenario-template summary { cursor: pointer; font-weight: 650; }
+.scenario-template p { overflow-wrap: anywhere; line-height: 1.6; }
+.scenario-preview form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 13px; }
+.scenario-preview .form-group:nth-child(4), .scenario-preview .form-group:nth-child(5) { grid-column: 1 / -1; }
+.scenario-preview-results { border-top: 1px solid #e3e9e7; }
+.scenario-preview-results > div { display: flex; gap: 16px; padding: 11px 0; border-bottom: 1px solid #edf1ef; font-size: 12px; }
+.scenario-preview-results strong { width: 110px; flex: 0 0 110px; color: #187666; }
+.scenario-preview-results span { overflow-wrap: anywhere; }
+
 @media (max-width: 1200px) {
   .run-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .run-metrics { grid-column: 1 / -1; }
   .run-case-workspace { grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); }
   .target-create { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .scenario-model-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .target-collection-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .matching-controls { grid-template-columns: minmax(0, 1fr) minmax(100px, .35fr); }
   .matching-controls .form-group:nth-child(3) { grid-column: 1 / -1; }
@@ -288,6 +309,12 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .target-probe, .target-collection { padding: 20px 17px; }
   .target-job-case { grid-template-columns: minmax(0, 1fr) auto; }
   .target-job-case span:nth-child(3) { grid-column: 1 / -1; }
+  .scenario-layout { display: block; }
+  .scenario-list { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid #e1e7e5; }
+  .scenario-list .pane-heading { display: none; }
+  .scenario-list .dataset-row { width: 175px; min-width: 175px; }
+  .scenario-model-form, .scenario-preview form { grid-template-columns: minmax(0, 1fr); }
+  .scenario-preview .form-group:nth-child(4), .scenario-preview .form-group:nth-child(5) { grid-column: auto; }
 }
 
 @media (max-width: 390px) {
