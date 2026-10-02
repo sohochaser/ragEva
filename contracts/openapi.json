@@ -1867,6 +1867,60 @@
         "title": "PromptTemplate",
         "type": "object"
       },
+      "PublicationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Candidate Ids",
+            "type": "array"
+          },
+          "dataset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Id"
+          },
+          "dataset_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Name"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          }
+        },
+        "required": [
+          "candidate_ids"
+        ],
+        "title": "PublicationRequest",
+        "type": "object"
+      },
       "ReferenceChunkResponse": {
         "properties": {
           "document_id": {
@@ -3193,6 +3247,13 @@
             "title": "Offset",
             "type": "integer"
           },
+          "source_collection_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Collection Ids",
+            "type": "array"
+          },
           "source_filename": {
             "title": "Source Filename",
             "type": "string"
@@ -3239,6 +3300,13 @@
             "title": "Id",
             "type": "string"
           },
+          "source_collection_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Collection Ids",
+            "type": "array"
+          },
           "source_filename": {
             "title": "Source Filename",
             "type": "string"
@@ -3267,6 +3335,47 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/candidates/publish": {
+      "post": {
+        "operationId": "publish_candidates_api_v1_candidates_publish_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportFailure"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Publish Candidates",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
     "/api/v1/candidates/{candidate_id}": {
       "get": {
         "operationId": "get_candidate_api_v1_candidates__candidate_id__get",

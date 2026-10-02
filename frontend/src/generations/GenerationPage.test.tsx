@@ -31,6 +31,7 @@ it('creates a generation and shows partial candidates with source evidence', asy
     if (url === '/api/v1/generations') return Promise.resolve(new Response('[]'))
     if (url === '/api/v1/document-collections/collection-1/generations' && options?.method === 'POST') return Promise.resolve(new Response(JSON.stringify(run), { status: 202 }))
     if (url === '/api/v1/generations/run-1/candidates') return Promise.resolve(new Response(JSON.stringify([candidate])))
+    if (url === '/api/v1/datasets') return Promise.resolve(new Response('[]'))
     return Promise.reject(new Error(`Unexpected URL ${url}`))
   })
   vi.stubGlobal('fetch', fetchMock)

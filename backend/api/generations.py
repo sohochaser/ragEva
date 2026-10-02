@@ -4,8 +4,9 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from backend.adapters.dataset_store import DatasetNotFound
 from backend.adapters.document_store import CollectionNotFound
 from backend.adapters.generation_store import (
     CandidateNotFound,
@@ -16,6 +17,12 @@ from backend.adapters.generation_store import (
     RevisionConflict,
 )
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
+from backend.adapters.publication_store import (
+    InvalidPublication,
+    PublicationConflict,
+    PublicationStore,
+)
+from backend.api.datasets import ImportFailure, ImportIssueResponse, VersionSummary
 from backend.config import Settings
 from backend.domain.candidate_review import ReviewAction
 from backend.domain.generation import PROMPT_VERSION, multi_chunk_target
@@ -146,9 +153,31 @@ class DuplicateDecisionRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=2000)
 
 
+class PublicationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_ids: list[str] = Field(min_length=1, max_length=1000)
+    dataset_name: str | None = Field(default=None, max_length=120)
+    dataset_id: str | None = None
+    expected_version: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def valid_target(self) -> "PublicationRequest":
+        if (bool(self.dataset_name and self.dataset_name.strip())) == bool(self.dataset_id):
+            raise ValueError("需要填写新数据集名称或选择已有数据集")
+        if self.dataset_id and self.expected_version is None:
+            raise ValueError("追加数据集时需要当前版本号")
+        if not self.dataset_id and self.expected_version is not None:
+            raise ValueError("新数据集不应填写版本号")
+        if self.dataset_name is not None:
+            self.dataset_name = self.dataset_name.strip()
+        return self
+
+
 def create_generation_router(settings: Settings) -> APIRouter:
     router = APIRouter(tags=["generations"])
     store = GenerationStore(settings.data_dir)
+    publisher = PublicationStore(settings.data_dir)
     models = OnlineModelStore(settings.data_dir)
 
     @router.post(
@@ -301,5 +330,29 @@ def create_generation_router(settings: Settings) -> APIRouter:
             ) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/v1/candidates/publish",
+        response_model=VersionSummary,
+        status_code=201,
+        responses={422: {"model": ImportFailure}},
+    )
+    def publish_candidates(request: PublicationRequest) -> dict[str, Any] | JSONResponse:
+        try:
+            return publisher.publish(**request.model_dump())
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail=f"候选不存在：{exc}") from exc
+        except DatasetNotFound as exc:
+            raise HTTPException(status_code=404, detail="数据集不存在") from exc
+        except PublicationConflict as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except InvalidPublication as exc:
+            return JSONResponse(
+                status_code=422,
+                content=ImportFailure(
+                    error="validation_failed",
+                    issues=[ImportIssueResponse(**vars(issue)) for issue in exc.issues],
+                ).model_dump(),
+            )
 
     return router
