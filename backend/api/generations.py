@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from backend.adapters.document_store import CollectionNotFound
 from backend.adapters.generation_store import (
     CandidateNotFound,
+    DuplicateDecisionConflict,
     GenerationNotFound,
     GenerationStore,
     InvalidReview,
@@ -112,6 +113,39 @@ class CandidateReviewIssue(BaseModel):
 class CandidateReviewFailure(BaseModel):
     error: str
     issues: list[CandidateReviewIssue]
+
+
+class DuplicateMatch(BaseModel):
+    source_kind: str
+    source_id: str
+    question: str
+    reference_answer: str
+    verdict: str
+    reason: str
+    shared_source_count: int
+    question_similarity: float
+    term_similarity: float
+
+
+class DuplicateCheck(BaseModel):
+    id: int
+    candidate_id: str
+    revision: int
+    verdict: str
+    matches: list[DuplicateMatch]
+    rule_version: str
+    checked_at: str
+    decision: str | None
+    reason: str | None
+    decided_at: str | None
+
+
+class DuplicateDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    check_id: int = Field(gt=0)
+    expected_revision: int = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 def create_generation_router(settings: Settings) -> APIRouter:
@@ -232,5 +266,51 @@ def create_generation_router(settings: Settings) -> APIRouter:
                     issues=[CandidateReviewIssue(**vars(issue)) for issue in exc.issues],
                 ).model_dump(),
             )
+
+    @router.get(
+        "/api/v1/candidates/{candidate_id}/duplicate-check",
+        response_model=DuplicateCheck | None,
+    )
+    def get_duplicate_check(candidate_id: str) -> dict[str, Any] | None:
+        try:
+            return store.duplicate_check(candidate_id)
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail="候选不存在") from exc
+
+    @router.get(
+        "/api/v1/candidates/{candidate_id}/duplicate-history",
+        response_model=list[DuplicateCheck],
+    )
+    def get_duplicate_history(candidate_id: str) -> list[dict[str, Any]]:
+        try:
+            return store.duplicate_history(candidate_id)
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail="候选不存在") from exc
+
+    @router.post(
+        "/api/v1/candidates/{candidate_id}/duplicate-check",
+        response_model=DuplicateCheck,
+    )
+    def recheck_duplicate(candidate_id: str) -> dict[str, Any]:
+        try:
+            return store.check_duplicates(candidate_id)
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail="候选不存在") from exc
+
+    @router.post(
+        "/api/v1/candidates/{candidate_id}/duplicate-decision",
+        response_model=DuplicateCheck,
+    )
+    def allow_suspected(candidate_id: str, request: DuplicateDecisionRequest) -> dict[str, Any]:
+        try:
+            return store.decide_duplicate(candidate_id, **request.model_dump())
+        except CandidateNotFound as exc:
+            raise HTTPException(status_code=404, detail="候选不存在") from exc
+        except DuplicateDecisionConflict as exc:
+            raise HTTPException(
+                status_code=409, detail="查重结论已变化或候选尚未批准，请刷新"
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return router

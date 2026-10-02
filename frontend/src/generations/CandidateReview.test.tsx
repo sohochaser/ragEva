@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 
-import type { CandidateRevision, GeneratedCandidate } from '../api/generations'
+import type { CandidateRevision, DuplicateCheck, GeneratedCandidate } from '../api/generations'
 import { CandidateReview } from './CandidateReview'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
@@ -29,7 +29,34 @@ it('edits source order, keeps revisions, and requires an answer before approval'
     status: 'pending_review', created_at: initial.created_at,
   }]
   const requests: Array<Record<string, unknown>> = []
+  let duplicate: DuplicateCheck | null = {
+    id: 1, candidate_id: initial.id, revision: 0, verdict: 'unique', matches: [],
+    rule_version: 'candidate-duplicate-v1', checked_at: initial.created_at,
+    decision: null, reason: null, decided_at: null,
+  }
   const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+    if (url === '/api/v1/candidates/candidate-1/duplicate-check') {
+      if (options?.method === 'POST') {
+        duplicate = {
+          ...duplicate!, id: duplicate!.id + 1, verdict: 'suspected',
+          matches: [{
+            source_kind: 'candidate', source_id: 'earlier', question: 'Earlier question',
+            reference_answer: 'Earlier answer', verdict: 'suspected',
+            reason: 'shared_answer_or_source', shared_source_count: 1,
+            question_similarity: 0.4, term_similarity: 0.2,
+          }],
+        }
+      }
+      return Promise.resolve(new Response(JSON.stringify(duplicate)))
+    }
+    if (url === '/api/v1/candidates/candidate-1/duplicate-history') {
+      return Promise.resolve(new Response(JSON.stringify(duplicate ? [duplicate] : [])))
+    }
+    if (url === '/api/v1/candidates/candidate-1/duplicate-decision' && options?.method === 'POST') {
+      const body = JSON.parse(options.body as string) as { reason: string }
+      duplicate = { ...duplicate!, decision: 'allow', reason: body.reason, decided_at: '2026-10-02T10:02:00Z' }
+      return Promise.resolve(new Response(JSON.stringify(duplicate)))
+    }
     if (url === '/api/v1/document-collections/collection-1') {
       return Promise.resolve(new Response(JSON.stringify({ id: 'collection-1', name: 'source', chunks })))
     }
@@ -50,6 +77,7 @@ it('edits source order, keeps revisions, and requires an answer before approval'
         reference_chunks: (body.support_positions as number[]).map((position) => chunks[position]),
         status: body.action === 'approve' ? 'approved' : 'pending_review',
       }
+      duplicate = { ...duplicate!, id: duplicate!.id + 1, revision: current.revision }
       revisions.push({
         revision: current.revision, question: current.question, reference_answer: current.reference_answer,
         reference_chunks: current.reference_chunks, support_positions: current.support_positions,
@@ -92,4 +120,11 @@ it('edits source order, keeps revisions, and requires an answer before approval'
   expect(screen.getByText(/#0 · 待审核/)).toBeTruthy()
   expect(screen.getByText(/#2 · 已批准/)).toBeTruthy()
   expect(screen.getByText('Original answer')).toBeTruthy()
+  expect(screen.getByText('未发现重复')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: '重新查重' }))
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/candidates/candidate-1/duplicate-check', { method: 'POST' })
+  expect(await screen.findByText('疑似重复 · 待确认')).toBeTruthy()
+  await user.type(screen.getByRole('textbox', { name: '非重复放行理由' }), 'Different fact')
+  await user.click(screen.getByRole('button', { name: '确认放行' }))
+  expect(await screen.findByText('放行理由：Different fact')).toBeTruthy()
 })

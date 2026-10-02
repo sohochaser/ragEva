@@ -6,6 +6,7 @@ export type GeneratedCandidate = components['schemas']['GeneratedCandidate']
 export type CandidateReviewRequest = components['schemas']['CandidateReviewRequest']
 export type CandidateRevision = components['schemas']['CandidateRevision']
 export type CandidateReviewIssue = components['schemas']['CandidateReviewIssue']
+export type DuplicateCheck = components['schemas']['DuplicateCheck']
 
 export class CandidateReviewError extends Error {
   constructor(public issues: CandidateReviewIssue[]) {
@@ -27,6 +28,17 @@ export const fetchGeneration = (id: string) => readJson<GenerationRun>(fetch(`/a
 export const fetchCandidates = (id: string) => readJson<GeneratedCandidate[]>(fetch(`/api/v1/generations/${encodeURIComponent(id)}/candidates`))
 export const fetchCandidate = (id: string) => readJson<GeneratedCandidate>(fetch(`/api/v1/candidates/${encodeURIComponent(id)}`))
 export const fetchCandidateRevisions = (id: string) => readJson<CandidateRevision[]>(fetch(`/api/v1/candidates/${encodeURIComponent(id)}/revisions`))
+export const fetchDuplicateCheck = (id: string) => readJson<DuplicateCheck | null>(fetch(`/api/v1/candidates/${encodeURIComponent(id)}/duplicate-check`))
+export const fetchDuplicateHistory = (id: string) => readJson<DuplicateCheck[]>(fetch(`/api/v1/candidates/${encodeURIComponent(id)}/duplicate-history`))
+export const recheckCandidate = (id: string) => readJson<DuplicateCheck>(fetch(
+  `/api/v1/candidates/${encodeURIComponent(id)}/duplicate-check`, { method: 'POST' },
+))
+export const allowSuspectedCandidate = (id: string, check: DuplicateCheck, reason: string) => readJson<DuplicateCheck>(fetch(
+  `/api/v1/candidates/${encodeURIComponent(id)}/duplicate-decision`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ check_id: check.id, expected_revision: check.revision, reason }),
+  },
+))
 export async function reviewCandidate(id: string, body: CandidateReviewRequest): Promise<GeneratedCandidate> {
   const response = await fetch(`/api/v1/candidates/${encodeURIComponent(id)}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
