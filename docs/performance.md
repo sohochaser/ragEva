@@ -4,4 +4,4 @@
 
 2026-10-02 本机记录：Python 3.11.14，macOS 26.6.2 arm64，1,000 题全流程耗时 3.78 秒。命令：`uv run --frozen pytest -q -s backend/tests/test_scale.py`。`backend/tests/test_recovery.py` 另覆盖中断后重排、已保存评分复用、重复消息、排队与运行中取消。
 
-React 组件测试覆盖目标采集取消和运行结果关键状态。浏览器关键路径 E2E 尚未执行，US-023 的该项验收仍待完成。
+`frontend/e2e/critical-path.spec.ts` 在真实 Chrome、隔离的管理 API、Worker、下载进程及确定性模型/RAG 桩上验证原文上传、Token 下载、候选不足额、审核发布、疑似重复放行、JSON/SSE 目标采集、文件预测导入、回答评分、复评和 JSON 导出。2026-10-02 本机 Chrome 运行 1 项测试通过，耗时 16.3 秒；命令为 `npm --prefix frontend run test:e2e`。测试服务在结束后正常退出，未使用真实密钥或外部模型。CI 安装 Playwright Chromium 并通过 `make check` 执行同一用例。

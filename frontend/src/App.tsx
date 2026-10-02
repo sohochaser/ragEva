@@ -115,13 +115,13 @@ export function App() {
         <div className="sidebar-foot">本机工作台</div>
       </aside>
       <main className="main-content">
-        <div hidden={page !== 'documents'}><DocumentCollectionPage /></div>
-        <div hidden={page !== 'generations'}><GenerationPage onOpenCollections={() => setPage('documents')} onOpenDatasets={(version) => { setDatasetFocus({ datasetId: version.dataset_id, version: version.version }); setPage('datasets') }} /></div>
-        <div hidden={page !== 'datasets'}><DatasetPage active={page === 'datasets'} focusVersion={datasetFocus} /></div>
-        <div hidden={page !== 'predictions'}><PredictionPage /></div>
-        <div hidden={page !== 'targets'}><TargetPage /></div>
-        <div hidden={page !== 'scenarios'}><ScenarioPage /></div>
-        <div hidden={page !== 'runs'}><RunPage /></div>
+        {page === 'documents' && <DocumentCollectionPage />}
+        {page === 'generations' && <GenerationPage onOpenCollections={() => setPage('documents')} onOpenDatasets={(version) => { setDatasetFocus({ datasetId: version.dataset_id, version: version.version }); setPage('datasets') }} />}
+        {page === 'datasets' && <DatasetPage focusVersion={datasetFocus} />}
+        {page === 'predictions' && <PredictionPage />}
+        {page === 'targets' && <TargetPage />}
+        {page === 'scenarios' && <ScenarioPage />}
+        {page === 'runs' && <RunPage />}
         {page === 'status' && <StatusDashboard api={api} worker={worker} refreshedAt={refreshedAt} onRefresh={() => void refresh()} />}
       </main>
     </div>

@@ -45,7 +45,7 @@ RAGEVA_DOWNLOAD_TOKEN='<专用 Token>' uv run python -m backend.download
 make check
 ```
 
-统一检查运行 Python lint/格式/类型/pytest、OpenAPI 快照与生成的前端类型一致性、React lint/类型/组件测试及生产构建。PR 与功能分支上的 GitHub Actions 使用同一命令，不需要模型密钥或真实被测 RAG。修改 API 契约后，依次运行 `uv run python scripts/export_openapi.py` 和 `npm --prefix frontend run generate:api`，再运行 `make check`。
+统一检查运行 Python lint/格式/类型/pytest、OpenAPI 快照与生成的前端类型一致性、React lint/类型/组件测试、生产构建及 Playwright 浏览器关键路径测试。浏览器测试在 macOS 上可使用已安装的 Google Chrome；其他环境先运行 `npm --prefix frontend exec -- playwright install chromium`。GitHub Actions 会安装 Chromium 并执行同一 `make check`，不需要模型密钥或真实被测 RAG。修改 API 契约后，依次运行 `uv run python scripts/export_openapi.py` 和 `npm --prefix frontend run generate:api`，再运行 `make check`。
 
 ## 文档
 

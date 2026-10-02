@@ -1,4 +1,4 @@
-.PHONY: setup dev check backend-check frontend-check contract-check
+.PHONY: setup dev check backend-check frontend-check contract-check e2e-check
 
 UV_CACHE_DIR ?= .local/uv-cache
 export UV_CACHE_DIR
@@ -26,4 +26,7 @@ frontend-check:
 	npm --prefix frontend run test
 	npm --prefix frontend run build
 
-check: backend-check contract-check frontend-check
+e2e-check:
+	npm --prefix frontend run test:e2e
+
+check: backend-check contract-check frontend-check e2e-check
