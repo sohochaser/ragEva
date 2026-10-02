@@ -2,6 +2,7 @@
 
 import json
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,6 +18,9 @@ from backend.domain.answer_prompts import (
 
 class AnswerModelError(Exception):
     pass
+
+
+CallObserver = Callable[[list[dict[str, str]], str | None, dict[str, int] | None], None]
 
 
 @dataclass(frozen=True)
@@ -56,46 +60,59 @@ def evaluate_answer_metric(
     metric: AnswerMetric,
     criteria: str,
     sample: AnswerSample,
+    on_call: CallObserver | None = None,
 ) -> AnswerModelResult:
     messages = render_messages(metric, criteria, sample)
+    content: str | None = None
+    usage: dict[str, int] | None = None
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     try:
-        response = client.post(
-            base_url.rstrip("/") + "/chat/completions",
-            json={
-                "model": model_name,
-                "messages": messages,
-                "temperature": 0,
-                "response_format": {"type": "json_object"},
-            },
-            headers=headers,
-            timeout=timeout_seconds,
+        try:
+            response = client.post(
+                base_url.rstrip("/") + "/chat/completions",
+                json={
+                    "model": model_name,
+                    "messages": messages,
+                    "temperature": 0,
+                    "response_format": {"type": "json_object"},
+                },
+                headers=headers,
+                timeout=timeout_seconds,
+            )
+        except httpx.TimeoutException as exc:
+            raise AnswerModelError("model_timeout") from exc
+        except httpx.TransportError as exc:
+            raise AnswerModelError("model_connection_error") from exc
+        if not 200 <= response.status_code < 300:
+            raise AnswerModelError(f"model_http_{response.status_code}")
+        try:
+            body = response.json()
+            if not isinstance(body, dict):
+                raise TypeError("invalid_body")
+            content = body["choices"][0]["message"]["content"]
+            if not isinstance(content, str):
+                raise ValueError("missing_content")
+            usage = _usage(body.get("usage"))
+            result = json.loads(content)
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            raise AnswerModelError("invalid_model_response") from exc
+        if not isinstance(result, dict) or set(result) != {"score", "reason"}:
+            raise AnswerModelError("invalid_score_shape")
+        score = result["score"]
+        reason = result["reason"]
+        if (
+            isinstance(score, bool)
+            or not isinstance(score, int | float)
+            or not math.isfinite(score)
+        ):
+            raise AnswerModelError("invalid_score")
+        if not 0 <= score <= 1:
+            raise AnswerModelError("invalid_score")
+        if not isinstance(reason, str) or not reason.strip():
+            raise AnswerModelError("invalid_reason")
+        return AnswerModelResult(
+            metric, float(score), reason.strip(), content, usage, model_name, PROMPT_VERSION
         )
-    except httpx.TimeoutException as exc:
-        raise AnswerModelError("model_timeout") from exc
-    except httpx.TransportError as exc:
-        raise AnswerModelError("model_connection_error") from exc
-    if not 200 <= response.status_code < 300:
-        raise AnswerModelError(f"model_http_{response.status_code}")
-    try:
-        body = response.json()
-        content = body["choices"][0]["message"]["content"]
-        if not isinstance(content, str):
-            raise ValueError("missing_content")
-        result = json.loads(content)
-    except (ValueError, KeyError, IndexError, TypeError) as exc:
-        raise AnswerModelError("invalid_model_response") from exc
-    if not isinstance(result, dict) or set(result) != {"score", "reason"}:
-        raise AnswerModelError("invalid_score_shape")
-    score = result["score"]
-    reason = result["reason"]
-    if isinstance(score, bool) or not isinstance(score, int | float) or not math.isfinite(score):
-        raise AnswerModelError("invalid_score")
-    if not 0 <= score <= 1:
-        raise AnswerModelError("invalid_score")
-    if not isinstance(reason, str) or not reason.strip():
-        raise AnswerModelError("invalid_reason")
-    usage = _usage(body.get("usage"))
-    return AnswerModelResult(
-        metric, float(score), reason.strip(), content, usage, model_name, PROMPT_VERSION
-    )
+    finally:
+        if on_call is not None:
+            on_call(messages, content if isinstance(content, str) else None, usage)

@@ -3,6 +3,7 @@
 from collections import deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 
 import httpx
@@ -11,7 +12,9 @@ from backend.adapters.document_store import CollectionNotFound
 from backend.adapters.generation_model import GeneratedCase, GenerationModelError, generate_case
 from backend.adapters.generation_store import GenerationStore
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
+from backend.adapters.usage_store import UsageStore
 from backend.domain.generation import plan_slots, reference_chunks
+from backend.domain.model_usage import model_call_usage
 
 
 def process_generation(
@@ -20,6 +23,7 @@ def process_generation(
     client_factory: Callable[[], httpx.Client] = httpx.Client,
 ) -> None:
     store = GenerationStore(data_dir)
+    usage_store = UsageStore(data_dir)
     if not store.claim(run_id):
         return
     unavailable_multi = 0
@@ -33,6 +37,22 @@ def process_generation(
             collection["chunks"], run["target_count"], run["target_multi_count"]
         )
         pending = deque(slots)
+
+        def record_generation_call(
+            messages: list[dict[str, str]],
+            content: str | None,
+            usage: dict[str, int] | None,
+            slot_index: int,
+        ) -> None:
+            usage_store.record(
+                "generation",
+                run_id,
+                "generation",
+                str(slot_index),
+                config["model_name"],
+                model_call_usage(messages, content, usage),
+            )
+
         with (
             client_factory() as client,
             ThreadPoolExecutor(max_workers=run["max_concurrency"]) as pool,
@@ -55,6 +75,7 @@ def process_generation(
                         config["language"],
                         config["question_type"],
                         config["instructions"],
+                        partial(record_generation_call, slot_index=slot.index),
                     )
                     for slot in batch
                 ]

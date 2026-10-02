@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { fetchCollections, type CollectionSummary } from '../api/documentCollections'
 import { addModel, fetchModels, type OnlineModel } from '../api/scenarios'
 import { fetchCandidates, fetchGeneration, fetchGenerations, startGeneration, type GeneratedCandidate, type GenerationRun } from '../api/generations'
+import { fetchGenerationUsage, type UsageSummary } from '../api/usage'
+import { UsagePanel } from '../usage/UsagePanel'
 
 const reasonLabels: Record<string, string> = {
   insufficient_source_chunks: '集合中没有足够的 chunk 组成多 chunk 题目',
@@ -24,6 +26,7 @@ export function GenerationPage({ onOpenCollections }: { onOpenCollections?: () =
   const [runs, setRuns] = useState<GenerationRun[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [candidates, setCandidates] = useState<GeneratedCandidate[]>([])
+  const [usage, setUsage] = useState<UsageSummary | null>(null)
   const [collectionId, setCollectionId] = useState('')
   const [modelId, setModelId] = useState('')
   const [targetCount, setTargetCount] = useState(20)
@@ -62,6 +65,13 @@ export function GenerationPage({ onOpenCollections }: { onOpenCollections?: () =
 
   const selected = runs.find((run) => run.id === selectedId)
   const selectedCount = selected?.actual_count
+  const attemptedCount = selected?.attempted_count
+  useEffect(() => {
+    if (!selectedId) { setUsage(null); return }
+    let active = true
+    void fetchGenerationUsage(selectedId).then((result) => { if (active) setUsage(result) }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '用量读取失败') })
+    return () => { active = false }
+  }, [selectedId, attemptedCount])
   useEffect(() => {
     if (!selectedId) { setCandidates([]); return }
     fetchCandidates(selectedId).then(setCandidates).catch((cause: unknown) => {
@@ -148,6 +158,7 @@ export function GenerationPage({ onOpenCollections }: { onOpenCollections?: () =
       <section className="generation-results" aria-label="候选结果">{selected ? <>
         <div className="dataset-toolbar"><div><h2>{collections.find((item) => item.id === selected.collection_id)?.name || '生成任务'}</h2><span>{statusLabels[selected.status] || selected.status} · 已调用 {selected.attempted_count}/{selected.max_calls}</span></div><span className="generation-count">候选 {selected.actual_count}/{selected.target_count} · 多 chunk {selected.actual_multi_count}/{selected.target_multi_count}</span></div>
         {selected.shortfall_reasons.length > 0 && <div className="generation-shortfall" role="status">{selected.shortfall_reasons.map((reason) => <span key={reason}>{reasonLabels[reason] || reason}</span>)}{Object.entries(selected.attempt_errors).map(([reason, count]) => <span key={reason}>{reason} · {count} 次</span>)}</div>}
+        <UsagePanel usage={usage} />
         {candidates.length ? <ol className="generation-candidates">{candidates.map((item) => <li key={item.id} className="generation-candidate"><div className="generation-candidate-heading"><span>{item.multi_chunk ? '多 chunk' : '单 chunk'} · 待审核</span><span>{item.model_name}</span></div><h3>{item.question}</h3><p className="generation-answer"><ArrowRight size={15} />{item.reference_answer}</p><div className="generation-evidence"><strong>支撑 chunk</strong>{item.reference_chunks.map((chunk, index) => <div key={`${item.id}-${index}`}><code>{chunk.document_id}</code><p>{chunk.text}</p></div>)}</div></li>)}</ol> : <div className="empty-state"><Sparkles size={28} /><h2>{selected.status === 'queued' || selected.status === 'running' ? '正在等待候选' : '暂无合格候选'}</h2></div>}
       </> : <div className="empty-state"><Sparkles size={28} /><h2>暂无生成任务</h2></div>}</section>
     </div>

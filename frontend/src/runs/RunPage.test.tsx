@@ -14,6 +14,14 @@ const run = {
   not_applicable_count: 0, cancelled_count: 0, created_at: '2026-01-01',
   started_at: '2026-01-01', finished_at: null,
 }
+const usage = {
+  call_count: 1,
+  totals: {
+    input: { actual: { calls: 1, tokens: 12 }, estimated: { calls: 0, tokens: 0 }, not_applicable: { calls: 0, tokens: 0 }, unknown: { calls: 0, tokens: 0 } },
+    output: { actual: { calls: 1, tokens: 4 }, estimated: { calls: 0, tokens: 0 }, not_applicable: { calls: 0, tokens: 0 }, unknown: { calls: 0, tokens: 0 } },
+  },
+  calls: [{ id: 'usage-1', owner_type: 'run', owner_id: 'run-1', operation: 'answer_scoring', case_id: 'q1:relevance', model_id: 'judge', input_tokens: 12, input_source: 'actual', output_tokens: 4, output_source: 'actual', tokenizer: null, created_at: '2026-01-01' }],
+}
 
 describe('RunPage', () => {
   it('shows progress and cancels a running evaluation', async () => {
@@ -35,6 +43,7 @@ describe('RunPage', () => {
       if (url === '/api/v1/runs/run-1/cancel') return Promise.resolve(new Response(JSON.stringify({
         ...run, status: 'cancelled', cancel_requested: true, processed_count: 2, cancelled_count: 1,
       })))
+      if (url === '/api/v1/runs/run-1/usage') return Promise.resolve(new Response(JSON.stringify(usage)))
       return Promise.resolve(new Response(JSON.stringify(run)))
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -61,12 +70,14 @@ describe('RunPage', () => {
       if (url === '/api/v1/predictions') return Promise.resolve(new Response(JSON.stringify([{ id: 'batch-1', source_filename: 'answers.jsonl', evaluation_type: 'retrieval', dataset_id: 'dataset-1', dataset_version: 1 }])))
       if (url === '/api/v1/runs') return Promise.resolve(new Response(JSON.stringify([completed])))
       if (url.includes('/cases?')) return Promise.resolve(new Response(JSON.stringify({ run_id: 'run-1', total: 1, offset: 0, limit: 100, cases: [{ case_id: 'q1', status: 'success', question: '退款?', answer: '可退', reference_answer: '可退', contexts: [{ text: '七天可退', document_id: 'doc-1', chunk_id: null, source: null }], reference_chunks: [{ text: '七天可退', document_id: 'doc-1' }], score, error: null, target_latency_ms: 20, elapsed_ms: 2 }] })))
+      if (url === '/api/v1/runs/run-1/usage') return Promise.resolve(new Response(JSON.stringify(usage)))
       return Promise.resolve(new Response(JSON.stringify(completed)))
     }))
     render(<RunPage />)
     const detail = await screen.findByRole('region', { name: '运行详情' })
     await waitFor(() => expect(within(detail).getByRole('region', { name: '总体指标' })).toBeTruthy())
     expect(within(detail).getByText('0.100')).toBeTruthy()
+    expect(within(detail).getByRole('region', { name: '模型 token 用量' }).textContent).toContain('实际 12')
     expect(within(detail).getAllByText('七天可退')).toHaveLength(2)
     expect(within(detail).getByRole('region', { name: '匹配证据' }).textContent).toContain('0.980')
     expect(within(detail).getByRole('link', { name: 'CSV' }).getAttribute('href')).toContain('format=csv')
@@ -85,6 +96,7 @@ describe('RunPage', () => {
       if (url === '/api/v1/runs' && options?.method === 'POST') return Promise.resolve(new Response(JSON.stringify(answerRun)))
       if (url === '/api/v1/runs') return Promise.resolve(new Response('[]'))
       if (url.includes('/cases?')) return Promise.resolve(new Response(JSON.stringify({ run_id: 'run-1', total: 1, offset: 0, limit: 100, cases: [{ case_id: 'q1', status: 'success', question: '退款?', answer: '可退', reference_answer: '可退', contexts: null, reference_chunks: null, score: null, error: null, target_latency_ms: null, elapsed_ms: 20, answer_metrics: { relevance: { status: 'success', score: 0.7, reason: '回答了问题', raw_response: '{"score":0.7,"reason":"回答了问题"}', error: null, usage: { input_tokens: 12, output_tokens: 4 }, model_name: 'judge', prompt_version: 'answer-eval-v1', criteria: '问题' } } }] })))
+      if (url === '/api/v1/runs/run-1/usage') return Promise.resolve(new Response(JSON.stringify(usage)))
       return Promise.resolve(new Response(JSON.stringify(answerRun)))
     })
     vi.stubGlobal('fetch', fetchMock)

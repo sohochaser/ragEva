@@ -2996,6 +2996,172 @@
         "title": "TargetTestResponse",
         "type": "object"
       },
+      "TokenBucket": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "calls",
+          "tokens"
+        ],
+        "title": "TokenBucket",
+        "type": "object"
+      },
+      "UsageCall": {
+        "properties": {
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_source": {
+            "enum": [
+              "actual",
+              "estimated",
+              "not_applicable",
+              "unknown"
+            ],
+            "title": "Input Source",
+            "type": "string"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "output_source": {
+            "enum": [
+              "actual",
+              "estimated",
+              "not_applicable",
+              "unknown"
+            ],
+            "title": "Output Source",
+            "type": "string"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "owner_type": {
+            "title": "Owner Type",
+            "type": "string"
+          },
+          "tokenizer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenizer"
+          }
+        },
+        "required": [
+          "id",
+          "owner_type",
+          "owner_id",
+          "operation",
+          "case_id",
+          "model_id",
+          "input_tokens",
+          "input_source",
+          "output_tokens",
+          "output_source",
+          "tokenizer",
+          "created_at"
+        ],
+        "title": "UsageCall",
+        "type": "object"
+      },
+      "UsageSummary": {
+        "properties": {
+          "call_count": {
+            "title": "Call Count",
+            "type": "integer"
+          },
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/UsageCall"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "totals": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/TokenBucket"
+              },
+              "propertyNames": {
+                "enum": [
+                  "actual",
+                  "estimated",
+                  "not_applicable",
+                  "unknown"
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Totals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "call_count",
+          "totals",
+          "calls"
+        ],
+        "title": "UsageSummary",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -3701,6 +3867,48 @@
         ]
       }
     },
+    "/api/v1/generations/{run_id}/usage": {
+      "get": {
+        "operationId": "get_usage_api_v1_generations__run_id__usage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "live_api_v1_health_live_get",
@@ -4302,6 +4510,48 @@
         ]
       }
     },
+    "/api/v1/runs/{run_id}/usage": {
+      "get": {
+        "operationId": "get_usage_api_v1_runs__run_id__usage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
     "/api/v1/scenarios": {
       "get": {
         "operationId": "list_scenarios_api_v1_scenarios_get",
@@ -4684,6 +4934,48 @@
           }
         },
         "summary": "Job Cases",
+        "tags": [
+          "target-jobs"
+        ]
+      }
+    },
+    "/api/v1/target-jobs/{job_id}/usage": {
+      "get": {
+        "operationId": "job_usage_api_v1_target_jobs__job_id__usage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Job Usage",
         "tags": [
           "target-jobs"
         ]

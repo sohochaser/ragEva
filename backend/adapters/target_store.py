@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from backend.adapters.http_target import TargetCall
 from backend.adapters.prediction_store import PredictionStore
+from backend.adapters.usage_store import UsageStore
 from backend.domain.predictions import EvaluationType
 
 TARGET_SCHEMA = """
@@ -191,6 +192,13 @@ class TargetStore(PredictionStore):
             "failed_count": by_status.get("failed", 0),
         }
 
+    def job_for_batch(self, batch_id: str) -> str | None:
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT id FROM target_jobs WHERE batch_id = ?", (batch_id,)
+            ).fetchone()
+        return row["id"] if row else None
+
     def list_jobs(self) -> list[dict[str, Any]]:
         with closing(self._connect()) as connection:
             rows = connection.execute(
@@ -223,7 +231,7 @@ class TargetStore(PredictionStore):
     def record_case(self, job_id: str, case_id: str, result: TargetCall) -> None:
         with closing(self._connect()) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
-            connection.execute(
+            changed = connection.execute(
                 "UPDATE target_job_cases SET status = ?, prediction_json = ?, error = ?, "
                 "attempts_json = ?, usage_json = ?, elapsed_ms = ? "
                 "WHERE job_id = ? AND case_id = ? AND status = 'pending'",
@@ -239,6 +247,22 @@ class TargetStore(PredictionStore):
                     job_id,
                     case_id,
                 ),
+            ).rowcount
+        if changed:
+            usage = result.usage
+            UsageStore(self.path.parent).record(
+                "target_job",
+                job_id,
+                "target_rag",
+                case_id,
+                self.get_job(job_id)["target_id"],
+                {
+                    "input_tokens": usage["input_tokens"] if usage else None,
+                    "input_source": "actual" if usage else "unknown",
+                    "output_tokens": usage["output_tokens"] if usage else None,
+                    "output_source": "actual" if usage else "unknown",
+                    "tokenizer": None,
+                },
             )
 
     def fail_pending(self, job_id: str, error: str) -> None:

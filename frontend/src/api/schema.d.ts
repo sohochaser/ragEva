@@ -209,6 +209,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/generations/{run_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Usage */
+        get: operations["get_usage_api_v1_generations__run_id__usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -415,6 +432,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Usage */
+        get: operations["get_usage_api_v1_runs__run_id__usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scenarios": {
         parameters: {
             query?: never;
@@ -545,6 +579,23 @@ export interface paths {
         };
         /** Job Cases */
         get: operations["job_cases_api_v1_target_jobs__job_id__cases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/target-jobs/{job_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Usage */
+        get: operations["job_usage_api_v1_target_jobs__job_id__usage_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1585,6 +1636,59 @@ export interface components {
                 [key: string]: number;
             } | null;
         };
+        /** TokenBucket */
+        TokenBucket: {
+            /** Calls */
+            calls: number;
+            /** Tokens */
+            tokens: number;
+        };
+        /** UsageCall */
+        UsageCall: {
+            /** Case Id */
+            case_id: string | null;
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: string;
+            /**
+             * Input Source
+             * @enum {string}
+             */
+            input_source: "actual" | "estimated" | "not_applicable" | "unknown";
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Model Id */
+            model_id: string;
+            /** Operation */
+            operation: string;
+            /**
+             * Output Source
+             * @enum {string}
+             */
+            output_source: "actual" | "estimated" | "not_applicable" | "unknown";
+            /** Output Tokens */
+            output_tokens: number | null;
+            /** Owner Id */
+            owner_id: string;
+            /** Owner Type */
+            owner_type: string;
+            /** Tokenizer */
+            tokenizer: string | null;
+        };
+        /** UsageSummary */
+        UsageSummary: {
+            /** Call Count */
+            call_count: number;
+            /** Calls */
+            calls: components["schemas"]["UsageCall"][];
+            /** Totals */
+            totals: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["TokenBucket"];
+                };
+            };
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2031,6 +2135,37 @@ export interface operations {
             };
         };
     };
+    get_usage_api_v1_generations__run_id__usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     live_api_v1_health_live_get: {
         parameters: {
             query?: never;
@@ -2437,6 +2572,37 @@ export interface operations {
             };
         };
     };
+    get_usage_api_v1_runs__run_id__usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_scenarios_api_v1_scenarios_get: {
         parameters: {
             query?: never;
@@ -2713,6 +2879,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TargetJobCase"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_usage_api_v1_target_jobs__job_id__usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageSummary"];
                 };
             };
             /** @description Validation Error */

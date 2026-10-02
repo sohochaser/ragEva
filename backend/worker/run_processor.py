@@ -13,9 +13,11 @@ from backend.adapters.answer_model import AnswerModelError, evaluate_answer_metr
 from backend.adapters.local_embeddings import EmbeddingCache, Encoder, FastEmbedEncoder
 from backend.adapters.model_store import OnlineModelStore
 from backend.adapters.run_store import RunStore
+from backend.adapters.usage_store import UsageStore
 from backend.domain.answer_prompts import AnswerMetric, AnswerSample, applicability
 from backend.domain.datasets import ReferenceChunk
 from backend.domain.matching import candidate_pairs, relevant_texts
+from backend.domain.model_usage import embedding_usage, model_call_usage
 from backend.domain.predictions import PredictedChunk
 from backend.domain.retrieval_scoring import score_retrieval
 from backend.domain.runs import CaseStatus
@@ -26,7 +28,11 @@ ANSWER_METRICS: tuple[AnswerMetric, ...] = ("faithfulness", "relevance", "correc
 
 
 def _score_retrieval_case(
-    item: dict[str, Any], config: dict[str, Any], encoder: Encoder, cache: EmbeddingCache
+    item: dict[str, Any],
+    config: dict[str, Any],
+    encoder: Encoder,
+    cache: EmbeddingCache,
+    on_call: Callable[[list[str]], None] | None = None,
 ) -> tuple[str, dict[str, Any] | None, str | None]:
     if item["reference_chunks"] is None:
         return "not_applicable", None, None
@@ -34,7 +40,7 @@ def _score_retrieval_case(
         return "failed", None, "missing_contexts"
     reference = [ReferenceChunk(**chunk) for chunk in item["reference_chunks"]]
     predicted = [PredictedChunk(**chunk) for chunk in item["contexts"]]
-    vectors = cache.vectors(encoder, relevant_texts(reference, predicted))
+    vectors = cache.vectors(encoder, relevant_texts(reference, predicted), on_call)
     pairs = candidate_pairs(reference, predicted, vectors, config["threshold"])
     score = score_retrieval(reference, predicted, pairs, encoder.model_id, config["threshold"])
     return "success", asdict(score), None
@@ -49,6 +55,7 @@ def _score_answer_case(
     client: httpx.Client | None,
     token: str | None,
     setup_error: str | None,
+    usage_store: UsageStore,
 ) -> list[str]:
     sample = AnswerSample(
         item["question"],
@@ -58,6 +65,22 @@ def _score_answer_case(
     )
     statuses: list[str] = []
     for metric in ANSWER_METRICS:
+
+        def record_answer_call(
+            messages: list[dict[str, str]],
+            content: str | None,
+            usage: dict[str, int] | None,
+            current_metric: AnswerMetric = metric,
+        ) -> None:
+            usage_store.record(
+                "run",
+                run_id,
+                "answer_scoring",
+                f"{case_id}:{current_metric}",
+                config["model_name"],
+                model_call_usage(messages, content, usage),
+            )
+
         result: dict[str, Any] = {
             "status": "not_applicable",
             "score": None,
@@ -86,6 +109,7 @@ def _score_answer_case(
                     metric,
                     config["criteria"][metric],
                     sample,
+                    record_answer_call,
                 )
                 result.update(
                     {
@@ -114,6 +138,7 @@ def process_run(
     client_factory: ClientFactory = httpx.Client,
 ) -> None:
     store = RunStore(data_dir)
+    usage_store = UsageStore(data_dir)
     if not store.claim(run_id):
         return
     config = store.config(run_id)
@@ -149,6 +174,18 @@ def process_run(
                 answer_setup_error = f"model_unavailable:{type(exc).__name__}"
         try:
             for case_id in store.pending_case_ids(run_id):
+
+                def record_embedding_call(texts: list[str], current_case_id: str = case_id) -> None:
+                    if encoder is not None:
+                        usage_store.record(
+                            "run",
+                            run_id,
+                            "embedding",
+                            current_case_id,
+                            encoder.model_id,
+                            embedding_usage(texts),
+                        )
+
                 if store.cancellation_requested(run_id):
                     break
                 start = monotonic()
@@ -161,7 +198,13 @@ def process_run(
                         if encoder is not None and cache is not None:
                             try:
                                 retrieval_status, retrieval_score, retrieval_error = (
-                                    _score_retrieval_case(item, config, encoder, cache)
+                                    _score_retrieval_case(
+                                        item,
+                                        config,
+                                        encoder,
+                                        cache,
+                                        record_embedding_call,
+                                    )
                                 )
                             except Exception as exc:
                                 retrieval_status = "failed"
@@ -178,6 +221,7 @@ def process_run(
                             client,
                             token,
                             answer_setup_error,
+                            usage_store,
                         )
                         if answer_config
                         else []

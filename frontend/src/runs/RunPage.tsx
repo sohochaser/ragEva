@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { fetchPredictionBatches, type PredictionBatchSummary } from '../api/predictions'
 import { cancelRun, createRun, exportRunUrl, fetchRun, fetchRunCases, fetchRuns, type CaseStatus, type RunCasesPage, type RunSummary } from '../api/runs'
 import { fetchModels, fetchScenarios, fetchScenarioVersions, type OnlineModel, type Scenario } from '../api/scenarios'
+import { fetchRunUsage, type UsageSummary } from '../api/usage'
+import { UsagePanel } from '../usage/UsagePanel'
 import { RunAggregateView, RunCaseDetail } from './RunResults'
 
 const statusLabels: Record<string, string> = {
@@ -20,6 +22,7 @@ export function RunPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selected, setSelected] = useState<RunSummary | null>(null)
   const [cases, setCases] = useState<RunCasesPage | null>(null)
+  const [usage, setUsage] = useState<UsageSummary | null>(null)
   const [offset, setOffset] = useState(0)
   const [caseStatus, setCaseStatus] = useState<CaseStatus | ''>('')
   const [caseId, setCaseId] = useState<string | null>(null)
@@ -64,12 +67,12 @@ export function RunPage() {
     return () => { active = false }
   }, [scenarioId])
   useEffect(() => {
-    if (!selectedId) { setSelected(null); setCases(null); return }
+    if (!selectedId) { setSelected(null); setCases(null); setUsage(null); return }
     let active = true
     const refresh = async () => {
       try {
-        const [run, page] = await Promise.all([fetchRun(selectedId), fetchRunCases(selectedId, offset, caseStatus)])
-        if (active) { setSelected(run); setCases(page); setCaseId((current) => current && page.cases.some((item) => item.case_id === current) ? current : page.cases[0]?.case_id ?? null); setRuns((items) => items.map((item) => item.id === run.id ? run : item)) }
+        const [run, page, tokenUsage] = await Promise.all([fetchRun(selectedId), fetchRunCases(selectedId, offset, caseStatus), fetchRunUsage(selectedId)])
+        if (active) { setSelected(run); setCases(page); setUsage(tokenUsage); setCaseId((current) => current && page.cases.some((item) => item.case_id === current) ? current : page.cases[0]?.case_id ?? null); setRuns((items) => items.map((item) => item.id === run.id ? run : item)) }
       } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : '无法读取运行') }
     }
     void refresh()
@@ -112,6 +115,7 @@ export function RunPage() {
         <div className="dataset-toolbar"><div><h2>运行 {selected.id.slice(0, 8)}</h2><span>{statusLabels[selected.status] ?? selected.status} · {selected.processed_count}/{selected.total_count} 题</span></div><div className="run-actions"><a className="secondary-button" href={exportRunUrl(selected.id, 'csv', caseStatus)} download><Download size={15} />CSV</a><a className="secondary-button" href={exportRunUrl(selected.id, 'json', caseStatus)} download><Download size={15} />JSON</a>{['queued', 'running'].includes(selected.status) && <button type="button" className="secondary-button" onClick={() => void cancel()}><Ban size={15} />取消</button>}</div></div>
         <div className="run-summary"><span>成功 {selected.success_count}</span><span>失败 {selected.failed_count}</span><span>不适用 {selected.not_applicable_count}</span><span>取消 {selected.cancelled_count}</span></div>
         <RunAggregateView run={selected} />
+        <UsagePanel usage={usage} />
         <div className="run-case-workspace"><div className="run-case-list"><div className="pane-heading"><h3>逐题结果</h3><select aria-label="筛选状态" value={caseStatus} onChange={(event) => { setCaseStatus(event.target.value as CaseStatus | ''); setOffset(0) }}><option value="">全部 · {selected.total_count}</option>{(['success', 'failed', 'not_applicable', 'pending', 'cancelled'] as const).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></div>{cases?.cases.map((item) => <button type="button" className={`run-case-row ${item.case_id === caseId ? 'active' : ''}`} key={item.case_id} onClick={() => setCaseId(item.case_id)}><code>{item.case_id}</code><span>{statusLabels[item.status] ?? item.status}</span>{item.error && <small>{item.error}</small>}</button>)}{cases?.total === 0 && <p className="preview-empty">无匹配结果</p>}</div>{selectedCase ? <RunCaseDetail key={selectedCase.case_id} item={selectedCase} /> : <div className="empty-detail">选择样本</div>}</div>
         {cases && cases.total > cases.limit && <div className="pagination"><button type="button" title="上一页" aria-label="上一页" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - cases.limit))}><ChevronLeft size={16} /></button><span>{Math.floor(offset / cases.limit) + 1} / {Math.ceil(cases.total / cases.limit)}</span><button type="button" title="下一页" aria-label="下一页" disabled={offset + cases.limit >= cases.total} onClick={() => setOffset(offset + cases.limit)}><ChevronRight size={16} /></button></div>}
       </> : <div className="empty-state">暂无运行</div>}</section>

@@ -1340,6 +1340,7 @@ dependencies = [
     { name = "httpx-sse" },
     { name = "huey" },
     { name = "python-multipart" },
+    { name = "tokenizers" },
     { name = "uvicorn" },
 ]
 
@@ -1358,6 +1359,7 @@ requires-dist = [
     { name = "httpx-sse", specifier = ">=0.4,<0.5" },
     { name = "huey", specifier = ">=3.4,<4" },
     { name = "python-multipart", specifier = ">=0.0.20,<1" },
+    { name = "tokenizers", specifier = ">=0.20,<1" },
     { name = "uvicorn", specifier = ">=0.30,<1" },
 ]
 

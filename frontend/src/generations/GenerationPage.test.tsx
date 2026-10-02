@@ -31,6 +31,14 @@ it('creates a generation and shows partial candidates with source evidence', asy
     if (url === '/api/v1/generations') return Promise.resolve(new Response('[]'))
     if (url === '/api/v1/document-collections/collection-1/generations' && options?.method === 'POST') return Promise.resolve(new Response(JSON.stringify(run), { status: 202 }))
     if (url === '/api/v1/generations/run-1/candidates') return Promise.resolve(new Response(JSON.stringify([candidate])))
+    if (url === '/api/v1/generations/run-1/usage') return Promise.resolve(new Response(JSON.stringify({
+      call_count: 1,
+      totals: {
+        input: { actual: { calls: 0, tokens: 0 }, estimated: { calls: 1, tokens: 24 }, not_applicable: { calls: 0, tokens: 0 }, unknown: { calls: 0, tokens: 0 } },
+        output: { actual: { calls: 0, tokens: 0 }, estimated: { calls: 0, tokens: 0 }, not_applicable: { calls: 0, tokens: 0 }, unknown: { calls: 1, tokens: 0 } },
+      },
+      calls: [{ id: 'usage-1', owner_type: 'generation', owner_id: 'run-1', operation: 'generation', case_id: '2', model_id: 'generator-v1', input_tokens: 24, input_source: 'estimated', output_tokens: null, output_source: 'unknown', tokenizer: 'bytelevel-v1', created_at: '2026-10-02' }],
+    })))
     return Promise.reject(new Error(`Unexpected URL ${url}`))
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -57,6 +65,7 @@ it('creates a generation and shows partial candidates with source evidence', asy
   expect(screen.getByText('已达到模型调用上限')).toBeTruthy()
   expect(screen.getByText('产品支持离线检索。')).toBeTruthy()
   expect(screen.getByText('doc-1')).toBeTruthy()
+  expect(screen.getByRole('region', { name: '模型 token 用量' }).textContent).toContain('估算 24')
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
 })
 
