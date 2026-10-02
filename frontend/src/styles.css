@@ -216,7 +216,7 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .run-attempts h4 { margin-bottom: 8px; }
 .run-attempts p { margin: 5px 0; color: #687875; font-size: 11px; }
 
-.target-create { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(210px, 2fr) minmax(140px, 1fr) 96px 72px auto; gap: 11px; align-items: end; padding-top: 22px; }
+.target-create { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(200px, 2fr) minmax(140px, 1fr) 85px 96px 72px auto; gap: 11px; align-items: end; padding-top: 22px; }
 .target-create .primary-button { white-space: nowrap; }
 .target-layout { min-height: 370px; }
 .target-layout .dataset-row span { overflow-wrap: anywhere; }

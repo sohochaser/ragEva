@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS http_targets (
     retries INTEGER NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS http_target_protocols (
+    target_id TEXT PRIMARY KEY REFERENCES http_targets(id),
+    protocol TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS target_jobs (
     id TEXT PRIMARY KEY,
     target_id TEXT NOT NULL REFERENCES http_targets(id),
@@ -73,7 +77,13 @@ class TargetStore(PredictionStore):
         return connection
 
     def create_target(
-        self, name: str, url: str, token: str | None, timeout_seconds: float, retries: int
+        self,
+        name: str,
+        url: str,
+        token: str | None,
+        timeout_seconds: float,
+        retries: int,
+        protocol: str = "json",
     ) -> dict[str, Any]:
         target_id = str(uuid4())
         secret_path = self.secret_dir / target_id
@@ -90,6 +100,10 @@ class TargetStore(PredictionStore):
                     "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (target_id, name, url, bool(token), timeout_seconds, retries, _now()),
                 )
+                connection.execute(
+                    "INSERT INTO http_target_protocols (target_id, protocol) VALUES (?, ?)",
+                    (target_id, protocol),
+                )
         except Exception:
             secret_path.unlink(missing_ok=True)
             raise
@@ -98,7 +112,9 @@ class TargetStore(PredictionStore):
     def get_target(self, target_id: str) -> dict[str, Any]:
         with closing(self._connect()) as connection:
             row = connection.execute(
-                "SELECT * FROM http_targets WHERE id = ?", (target_id,)
+                "SELECT t.*, COALESCE(p.protocol, 'json') AS protocol FROM http_targets t "
+                "LEFT JOIN http_target_protocols p ON p.target_id = t.id WHERE t.id = ?",
+                (target_id,),
             ).fetchone()
         if row is None:
             raise TargetNotFound(target_id)

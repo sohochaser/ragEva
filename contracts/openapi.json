@@ -1330,6 +1330,15 @@
             "title": "Name",
             "type": "string"
           },
+          "protocol": {
+            "default": "json",
+            "enum": [
+              "json",
+              "sse"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          },
           "retries": {
             "default": 1,
             "maximum": 3.0,
@@ -1588,6 +1597,14 @@
             "title": "Name",
             "type": "string"
           },
+          "protocol": {
+            "enum": [
+              "json",
+              "sse"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          },
           "retries": {
             "title": "Retries",
             "type": "integer"
@@ -1608,6 +1625,7 @@
           "has_token",
           "timeout_seconds",
           "retries",
+          "protocol",
           "created_at"
         ],
         "title": "TargetSummary",

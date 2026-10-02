@@ -17,6 +17,9 @@ class TargetAttempt:
     http_status: int | None
     elapsed_ms: float
     error: str | None
+    ttft_ms: float | None = None
+    ttlt_ms: float | None = None
+    stream_completed_ms: float | None = None
 
 
 @dataclass(frozen=True)
@@ -90,7 +93,7 @@ def call_json_target(
                 "case_id": case_id,
                 "answer": payload.get("answer"),
                 "contexts": payload.get("contexts"),
-                "latency_ms": elapsed_ms,
+                "latency_ms": sum(item.elapsed_ms for item in attempts) + elapsed_ms,
             }
             predictions, issues = validate_predictions(
                 [SourceRow(1, values)],

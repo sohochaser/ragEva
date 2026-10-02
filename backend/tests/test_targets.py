@@ -184,3 +184,45 @@ def test_collector_caps_simultaneous_http_requests(tmp_path: Path) -> None:
     assert maximum <= 4
     assert maximum > 1
     assert store.get_job(job["id"])["status"] == "completed"
+
+
+def test_sse_collection_persists_equivalent_prediction_and_timings(tmp_path: Path) -> None:
+    from backend.adapters.dataset_store import DatasetStore
+    from backend.adapters.target_store import TargetStore
+    from backend.domain.datasets import EvaluationCase, ReferenceChunk
+
+    dataset = DatasetStore(tmp_path).import_cases(
+        "stream",
+        None,
+        "generated",
+        [EvaluationCase("q1", "Q", "A", (ReferenceChunk("context", "d"),))],
+    )
+    store = TargetStore(tmp_path)
+    target = store.create_target("stream", "https://example.test/rag", None, 2, 0, "sse")
+    assert store.get_target(target["id"])["protocol"] == "sse"
+    job = store.create_job(target["id"], dataset["dataset_id"], 1, "both")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert json.loads(request.content)["stream"] is True
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "text/event-stream"},
+            text='event: answer.delta\ndata: {"text":"A"}\n\n'
+            'event: contexts\ndata: {"items":[{"text":"context","document_id":"d"}]}\n\n'
+            'event: completed\ndata: {"usage":{"input_tokens":2,"output_tokens":1}}\n\n',
+        )
+
+    collect_target_job(
+        job["id"],
+        tmp_path,
+        client_factory=lambda: httpx.Client(transport=httpx.MockTransport(respond)),
+    )
+    completed = store.get_job(job["id"])
+    assert completed["status"] == "completed"
+    prediction = store.get_batch(completed["batch_id"], 0, 10)["predictions"][0]
+    assert prediction["answer"] == "A"
+    assert prediction["contexts"][0]["text"] == "context"
+    attempt = store.job_cases(job["id"])[0]["attempts"][0]
+    assert attempt["ttft_ms"] is not None
+    assert attempt["ttlt_ms"] is not None
+    assert attempt["stream_completed_ms"] is not None

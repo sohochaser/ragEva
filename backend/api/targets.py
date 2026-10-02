@@ -1,7 +1,7 @@
 """Local HTTP target configuration, connection test, and collection jobs."""
 
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import parse_qsl, urlsplit
 
 import httpx
@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
 from backend.adapters.http_target import call_json_target
+from backend.adapters.sse_target import call_sse_target
 from backend.adapters.target_store import TargetJobNotFound, TargetNotFound, TargetStore
 from backend.config import Settings
 from backend.domain.predictions import EvaluationType
@@ -22,6 +23,7 @@ class TargetCreate(BaseModel):
     bearer_token: SecretStr | None = None
     timeout_seconds: float = Field(default=30, gt=0, le=120)
     retries: int = Field(default=1, ge=0, le=3)
+    protocol: Literal["json", "sse"] = "json"
 
     @field_validator("name")
     @classmethod
@@ -54,6 +56,7 @@ class TargetSummary(BaseModel):
     has_token: bool
     timeout_seconds: float
     retries: int
+    protocol: Literal["json", "sse"]
     created_at: str
 
 
@@ -117,6 +120,7 @@ def create_target_router(settings: Settings) -> APIRouter:
             request.bearer_token.get_secret_value() if request.bearer_token else None,
             request.timeout_seconds,
             request.retries,
+            request.protocol,
         )
 
     @router.get("", response_model=list[TargetSummary])
@@ -131,7 +135,8 @@ def create_target_router(settings: Settings) -> APIRouter:
         except TargetNotFound as exc:
             raise HTTPException(status_code=404, detail="目标不存在") from exc
         with httpx.Client() as client:
-            result = call_json_target(
+            caller = call_sse_target if target["protocol"] == "sse" else call_json_target
+            result = caller(
                 client,
                 target["url"],
                 token,

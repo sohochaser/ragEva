@@ -799,6 +799,12 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Protocol
+             * @default json
+             * @enum {string}
+             */
+            protocol: "json" | "sse";
+            /**
              * Retries
              * @default 1
              */
@@ -889,6 +895,11 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Protocol
+             * @enum {string}
+             */
+            protocol: "json" | "sse";
             /** Retries */
             retries: number;
             /** Timeout Seconds */

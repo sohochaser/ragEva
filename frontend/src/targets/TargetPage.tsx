@@ -20,6 +20,7 @@ export function TargetPage() {
   const [token, setToken] = useState('')
   const [timeout, setTimeoutValue] = useState(30)
   const [retries, setRetries] = useState(1)
+  const [protocol, setProtocol] = useState<'json' | 'sse'>('json')
   const [caseId, setCaseId] = useState('probe')
   const [question, setQuestion] = useState('')
   const [testResult, setTestResult] = useState<TargetTest | null>(null)
@@ -65,7 +66,7 @@ export function TargetPage() {
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('')
     try {
-      const target = await addTarget({ name: name.trim(), url: url.trim(), bearer_token: token || null, timeout_seconds: timeout, retries })
+      const target = await addTarget({ name: name.trim(), url: url.trim(), bearer_token: token || null, timeout_seconds: timeout, retries, protocol })
       setTargets((items) => [target, ...items]); setTargetId(target.id)
       setName(''); setUrl(''); setToken('')
     } catch (cause) { setError(cause instanceof Error ? cause.message : '保存目标失败') }
@@ -96,13 +97,14 @@ export function TargetPage() {
       <label className="form-group"><span className="form-label">名称</span><input value={name} required onChange={(event) => setName(event.target.value)} /></label>
       <label className="form-group"><span className="form-label">接口 URL</span><input type="url" value={url} required placeholder="https://..." onChange={(event) => setUrl(event.target.value)} /></label>
       <label className="form-group"><span className="form-label">Bearer Token</span><input type="password" value={token} autoComplete="off" onChange={(event) => setToken(event.target.value)} /></label>
+      <label className="form-group"><span className="form-label">响应协议</span><select value={protocol} onChange={(event) => setProtocol(event.target.value as 'json' | 'sse')}><option value="json">JSON</option><option value="sse">SSE</option></select></label>
       <label className="form-group"><span className="form-label">超时 / 秒</span><input type="number" min="1" max="120" value={timeout} onChange={(event) => setTimeoutValue(Number(event.target.value))} /></label>
       <label className="form-group"><span className="form-label">重试</span><input type="number" min="0" max="3" value={retries} onChange={(event) => setRetries(Number(event.target.value))} /></label>
       <button type="submit" className="primary-button" disabled={busy}><Plus size={15} />保存</button>
     </form>
     {error && <p className="page-error" role="alert">{error}</p>}
     <div className="dataset-layout target-layout"><aside className="dataset-list" aria-label="HTTP 目标列表"><div className="pane-heading"><h2>目标</h2><span>{targets.length}</span></div>{targets.map((item) => <button type="button" className={`dataset-row ${targetId === item.id ? 'active' : ''}`} key={item.id} onClick={() => { setTargetId(item.id); setTestResult(null) }}><strong>{item.name}</strong><span>{item.url}</span></button>)}</aside><section className="dataset-workspace" aria-label="目标详情">{selectedTarget ? <>
-      <div className="dataset-toolbar"><div><h2>{selectedTarget.name}</h2><span>{selectedTarget.url}</span></div><span className="target-auth">{selectedTarget.has_token ? 'Bearer 已配置' : '无认证'}</span></div>
+      <div className="dataset-toolbar"><div><h2>{selectedTarget.name}</h2><span>{selectedTarget.url} · {selectedTarget.protocol.toUpperCase()}</span></div><span className="target-auth">{selectedTarget.has_token ? 'Bearer 已配置' : '无认证'}</span></div>
       <form className="target-probe" onSubmit={(event) => void probe(event)}><div className="section-heading"><h2>连接测试</h2></div><div className="target-probe-fields"><label className="form-group"><span className="form-label">case_id</span><input value={caseId} required onChange={(event) => setCaseId(event.target.value)} /></label><label className="form-group"><span className="form-label">问题</span><input value={question} required onChange={(event) => setQuestion(event.target.value)} /></label><button type="submit" className="secondary-button" disabled={busy}><Link2 size={15} />测试</button></div>{testResult && <p className={testResult.success ? 'target-success' : 'form-error'} role="status">{testResult.success ? '连接成功' : `连接失败：${testResult.error}`}{testResult.attempts.length > 1 ? ` · ${testResult.attempts.length} 次尝试` : ''}</p>}</form>
       <section className="target-collection"><div className="section-heading"><h2>批量采集</h2></div><div className="target-collection-fields"><label className="form-group"><span className="form-label">数据集</span><select value={datasetId} onChange={(event) => setDatasetId(event.target.value)}>{datasets.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="form-group"><span className="form-label">版本</span><select value={datasetVersion} onChange={(event) => setDatasetVersion(Number(event.target.value))}>{versions.map((item) => <option key={item.id} value={item.version}>v{item.version}</option>)}</select></label><label className="form-group"><span className="form-label">评测类型</span><select value={evaluationType} onChange={(event) => setEvaluationType(event.target.value as EvaluationType)}><option value="both">答案 + 检索</option><option value="retrieval">检索</option><option value="answer">答案</option></select></label><button type="button" className="primary-button" disabled={busy || !datasetId || !versions.length} onClick={() => void collect()}><Play size={15} />采集预测</button></div></section>
     </> : <div className="empty-state">暂无目标</div>}</section></div>

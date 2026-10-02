@@ -7,6 +7,7 @@ from pathlib import Path
 import httpx
 
 from backend.adapters.http_target import TargetCall, call_json_target
+from backend.adapters.sse_target import call_sse_target
 from backend.adapters.target_store import TargetStore
 
 
@@ -23,10 +24,11 @@ def collect_target_job(
         target = store.get_target(job["target_id"])
         token = store.token(job["target_id"])
         cases = store.pending_cases(job_id)
+        caller = call_sse_target if target["protocol"] == "sse" else call_json_target
         with client_factory() as client, ThreadPoolExecutor(max_workers=4) as pool:
             futures = {
                 pool.submit(
-                    call_json_target,
+                    caller,
                     client,
                     target["url"],
                     token,
