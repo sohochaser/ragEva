@@ -1,0 +1,28 @@
+import { expect, test } from '@playwright/test'
+
+test('core forms and upload dialog remain operable across workspaces', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: '上传原文' }).click()
+  const dialog = page.getByRole('dialog', { name: '上传原文' })
+  await expect(dialog.getByLabel('集合名称')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '上传', exact: true })).toBeVisible()
+  const bounds = await dialog.boundingBox()
+  expect(bounds).not.toBeNull()
+  expect(bounds!.y).toBeGreaterThanOrEqual(0)
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(900)
+  await dialog.getByRole('button', { name: '关闭' }).click()
+  await expect(dialog).toBeHidden()
+
+  const nav = page.getByRole('navigation', { name: '主导航' })
+  await nav.getByRole('button', { name: '候选生成' }).click()
+  await expect(page.getByLabel('目标条数')).toBeVisible()
+  await nav.getByRole('button', { name: 'HTTP 目标' }).click()
+  await expect(page.getByLabel('接口 URL')).toBeVisible()
+  await nav.getByRole('button', { name: '评价场景' }).click()
+  await expect(page.getByLabel('忠实度评价标准')).toBeVisible()
+  await nav.getByRole('button', { name: '评测运行' }).click()
+  await expect(page.getByLabel('评测模式')).toBeVisible()
+  await nav.getByRole('button', { name: '系统状态' }).click()
+  await expect(page.getByText('管理 API')).toBeVisible()
+  await expect(page.getByText('任务 Worker')).toBeVisible()
+})
