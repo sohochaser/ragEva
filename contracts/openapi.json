@@ -178,6 +178,24 @@
         "title": "Body_import_predictions_api_v1_predictions_import_post",
         "type": "object"
       },
+      "CandidateChunk": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "text"
+        ],
+        "title": "CandidateChunk",
+        "type": "object"
+      },
       "CandidateResponse": {
         "properties": {
           "candidate": {
@@ -620,6 +638,257 @@
           "reason"
         ],
         "title": "EdgeDecisionResponse",
+        "type": "object"
+      },
+      "GeneratedCandidate": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "multi_chunk": {
+            "title": "Multi Chunk",
+            "type": "boolean"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "reference_chunks": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateChunk"
+            },
+            "title": "Reference Chunks",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "slot_index": {
+            "title": "Slot Index",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "support_positions": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Support Positions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "slot_index",
+          "question",
+          "reference_answer",
+          "reference_chunks",
+          "support_positions",
+          "multi_chunk",
+          "status",
+          "prompt_version",
+          "model_name",
+          "created_at"
+        ],
+        "title": "GeneratedCandidate",
+        "type": "object"
+      },
+      "GenerationCreate": {
+        "properties": {
+          "instructions": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Instructions",
+            "type": "string"
+          },
+          "language": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Language",
+            "type": "string"
+          },
+          "max_calls": {
+            "anyOf": [
+              {
+                "maximum": 3000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Calls"
+          },
+          "max_concurrency": {
+            "default": 4,
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
+          "model_id": {
+            "minLength": 1,
+            "title": "Model Id",
+            "type": "string"
+          },
+          "multi_chunk_ratio": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Multi Chunk Ratio",
+            "type": "number"
+          },
+          "question_type": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Question Type",
+            "type": "string"
+          },
+          "target_count": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Target Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_id",
+          "target_count",
+          "multi_chunk_ratio",
+          "language",
+          "question_type"
+        ],
+        "title": "GenerationCreate",
+        "type": "object"
+      },
+      "GenerationSummary": {
+        "properties": {
+          "actual_count": {
+            "title": "Actual Count",
+            "type": "integer"
+          },
+          "actual_multi_count": {
+            "title": "Actual Multi Count",
+            "type": "integer"
+          },
+          "attempt_errors": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Attempt Errors",
+            "type": "object"
+          },
+          "attempted_count": {
+            "title": "Attempted Count",
+            "type": "integer"
+          },
+          "collection_id": {
+            "title": "Collection Id",
+            "type": "string"
+          },
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_calls": {
+            "title": "Max Calls",
+            "type": "integer"
+          },
+          "max_concurrency": {
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
+          "shortfall_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Shortfall Reasons",
+            "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target_count": {
+            "title": "Target Count",
+            "type": "integer"
+          },
+          "target_multi_count": {
+            "title": "Target Multi Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "collection_id",
+          "status",
+          "config",
+          "target_count",
+          "target_multi_count",
+          "max_calls",
+          "max_concurrency",
+          "attempted_count",
+          "actual_count",
+          "actual_multi_count",
+          "shortfall_reasons",
+          "attempt_errors",
+          "created_at",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "GenerationSummary",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -3075,6 +3344,171 @@
         "summary": "Get Collection",
         "tags": [
           "document-collections"
+        ]
+      }
+    },
+    "/api/v1/document-collections/{collection_id}/generations": {
+      "post": {
+        "operationId": "create_api_v1_document_collections__collection_id__generations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/generations": {
+      "get": {
+        "operationId": "list_runs_api_v1_generations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GenerationSummary"
+                  },
+                  "title": "Response List Runs Api V1 Generations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/generations/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_generations__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/generations/{run_id}/candidates": {
+      "get": {
+        "operationId": "get_candidates_api_v1_generations__run_id__candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GeneratedCandidate"
+                  },
+                  "title": "Response Get Candidates Api V1 Generations  Run Id  Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Candidates",
+        "tags": [
+          "generations"
         ]
       }
     },

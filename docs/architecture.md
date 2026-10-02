@@ -20,6 +20,8 @@ US-009 扩展目标协议为 SSE：`backend/adapters/sse_target.py` 使用 `http
 
 文档集合使用 `backend/domain/document_collections.py` 校验 TXT/Markdown、ID 与切块参数，`backend/adapters/document_store.py` 在一个 SQLite 事务中保存原始 BLOB、SHA-256 与有序切块。CSV/JSONL chunk 清单由 `backend/domain/chunk_manifests.py` 校验全局顺序、文档 ID、正文与重复项，同样原子保存。集合以 `source_kind` 区分 `original_files` 和 `chunks_only`；后者没有文件名、校验值、原始字节或下载 URL。管理 API 提供创建、清单导入、列表和详情，详情的 `chunks` 保留可供后续生成流程使用的全局顺序。原始字节仅存于业务库，独立下载入口由 US-016 实现。
 
+US-017 的生成边界：`backend/domain/generation.py` 按固定顺序分配单/多 chunk 配额与来源；`backend/adapters/generation_model.py` 调用在线 OpenAI 兼容模型，要求结果只引用本次提供的 chunk 位置；`backend/adapters/generation_store.py` 原子保存任务、尝试和只读待审核候选。Huey Worker 以任务状态原子领取防止重复执行，最多 4 个并发模型请求，受任务最大调用次数约束。失败响应只保存诊断代码，合格候选仍可查看；模型凭据沿用受保护的在线模型配置，不进入任务快照。US-018 接续候选审核与编辑。
+
 ```text
 React + TypeScript
     |
@@ -74,7 +76,7 @@ Python API (FastAPI)
 
 - `POST /api/v1/datasets/import`，`GET /api/v1/datasets/{id}/versions`
 - `POST /api/v1/document-collections`：上传 TXT/Markdown/DOCX/文本 PDF 或导入已有 chunk 清单；原文提取、切块与 `document_id` 校验后形成不可变快照。
-- `POST /api/v1/document-collections/{id}/generations`，`GET /api/v1/generations/{id}/candidates`：生成任务接收目标条数、多 chunk 比例、语言、题型和补充要求，返回实际数量、失败原因和 token 用量。
+- `POST /api/v1/document-collections/{id}/generations`，`GET /api/v1/generations/{id}`，`GET /api/v1/generations/{id}/candidates`：生成任务接收目标条数、多 chunk 比例、语言、题型和补充要求，返回进度、实际数量和不足原因；完整 token 用量汇总由 US-021 接入。
 - `PATCH /api/v1/candidates/{id}`，`POST /api/v1/candidates/publish`：审核、校验并发布不可变数据集版本。
 - `POST /api/v1/targets`，`POST /api/v1/targets/{id}/test`
 - `POST /api/v1/predictions/import`，`GET /api/v1/predictions/{id}`

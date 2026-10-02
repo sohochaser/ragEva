@@ -21,3 +21,10 @@ def collect_target_task(job_id: str) -> None:
     from backend.worker.target_collector import collect_target_job
 
     collect_target_job(job_id, settings.data_dir)
+
+
+@huey.task()
+def generate_candidates_task(run_id: str) -> None:
+    from backend.worker.generation_processor import process_generation
+
+    process_generation(run_id, settings.data_dir)

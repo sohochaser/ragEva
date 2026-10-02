@@ -1,6 +1,6 @@
 # ragEva
 
-本机单人使用的 RAG 评测工作台。一套 Python 后端分别运行管理 API 与任务 Worker，React 前端独立运行。当前已完成 US-001～US-009 文件与 HTTP 评测，以及 US-013 文本原文集合；其余故事按[用户故事](docs/stories.md)继续实施。
+本机单人使用的 RAG 评测工作台。一套 Python 后端分别运行管理 API 与任务 Worker，React 前端独立运行。已完成文件与 HTTP 检索评测、场景预览、文档集合导入和候选生成；其余故事按[用户故事](docs/stories.md)继续实施。
 
 ## 本机运行
 
@@ -18,6 +18,8 @@ make dev
 数据集页可上传 UTF-8 CSV/JSONL 金标准样本，创建数据集或导入已有数据集的新版本；支持列名映射、逐行错误提示及版本样本浏览。文件字段、参考 chunk 顺序和版本语义见[导入格式](docs/dataset-format.md)。
 
 文档集合页可批量上传 UTF-8 TXT/Markdown 原文，逐文件填写 `document_id` 或按文件名称自动编号。切块大小为 1–10000 字符，重叠量须小于切块大小。集合保存上传原始字节、SHA-256、切块配置与有序切块，并可在详情页核对；任何文件有误时整个集合不创建。也可导入 UTF-8 CSV/JSONL chunk 清单，每行包含从 0 连续递增的 `position`、`document_id` 和 `text`；这类集合保留清单全局顺序并标记无原文，不提供文件下载。DOCX/PDF 和原文下载由后续故事接入。
+
+候选生成页可配置独立的在线 OpenAI 兼容模型，选择任一文档集合，指定目标条数、多 chunk 比例、语言和题型，异步生成待审核候选。页面显示进度、实际/目标数量、失败与不足额原因，并保留每题引用的集合 chunk。模型 Token 单独保存在受保护的本机文件中，不进入任务快照。配额及模型输出规则见[候选生成说明](docs/generations.md)；审核与发布由后续故事接入。
 
 预测批次页可导入已有 RAG 系统的 CSV/JSONL 答案与有序检索 chunk，绑定已有数据集版本，或从同一文件同时建立金标准数据集。字段、评测类型和未匹配计数见[预测文件格式](docs/prediction-format.md)。
 
@@ -43,3 +45,4 @@ make check
 - [金标准数据集导入格式](docs/dataset-format.md)
 - [预测文件导入格式](docs/prediction-format.md)
 - [本地向量匹配预览](docs/local-matching.md)
+- [候选生成说明](docs/generations.md)
