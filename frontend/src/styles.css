@@ -53,11 +53,11 @@ a { color: inherit; }
 .sidebar-foot { margin-top: auto; padding: 0 12px; color: #747d85; font-size: 12px; }
 
 .main-content { width: 100%; min-width: 0; max-width: 1500px; padding: 42px clamp(24px, 4vw, 64px); }
-.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 25px; border-bottom: 1px solid var(--line); }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 30px; border-bottom: 1px solid var(--line); }
 .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .document-page-header { flex-wrap: wrap; }
 .eyebrow { margin: 0 0 9px; color: var(--brand); font-size: 11px; font-weight: 700; }
-h1 { margin: 0; color: var(--ink); font-size: 27px; font-weight: 700; line-height: 1.25; }
+h1 { margin: 0; color: var(--ink); font-size: 30px; font-weight: 700; line-height: 1.25; }
 .refresh-button {
   display: inline-flex;
   align-items: center;
@@ -75,7 +75,7 @@ h1 { margin: 0; color: var(--ink); font-size: 27px; font-weight: 700; line-heigh
 .refresh-button:focus-visible, .api-link:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .status-section { margin-top: 35px; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
-.section-heading h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.section-heading h2 { margin: 0; font-size: 16px; font-weight: 650; }
 .section-heading span { color: #65707a; font-size: 12px; }
 .status-list { border: 1px solid var(--line); border-radius: 6px; background: #fff; overflow: hidden; }
 .status-item { display: flex; align-items: center; gap: 17px; min-height: 77px; padding: 14px 21px; }
@@ -485,6 +485,7 @@ h1 { margin: 0; color: var(--ink); font-size: 27px; font-weight: 700; line-heigh
   .brand { gap: 8px; font-size: 18px; }
   .sidebar { padding: 10px 14px; }
   .main-content { padding: 25px 14px; }
+  .page-header h1 { font-size: 27px; }
   .generation-header { align-items: flex-start; flex-direction: column; }
   .run-form { grid-template-columns: minmax(0, 1fr); }
   .run-form .offline-option { justify-self: start; }
