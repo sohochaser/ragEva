@@ -18,7 +18,7 @@ def test_answer_run_isolates_metrics_and_aggregates_only_valid_scores(
     from backend.api import runs
 
     monkeypatch.setattr(runs, "worker_is_ready", lambda *_: True)
-    monkeypatch.setattr(runs, "score_run_task", lambda _id: None)
+    monkeypatch.setattr(runs, "score_run_task", lambda _id, _context=None: None)
     api = TestClient(create_app(Settings(data_dir=tmp_path)))
     gold = [
         {"case_id": "q1", "question": "What?", "reference_answer": "Yes"},

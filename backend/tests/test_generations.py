@@ -42,7 +42,7 @@ def setup_run(
         "生成模型", "https://model.example/v1", "generator-v1", "private-token", 2
     )
     monkeypatch.setattr(generations, "worker_is_ready", lambda *_: True)
-    monkeypatch.setattr(generations, "generate_candidates_task", lambda _id: None)
+    monkeypatch.setattr(generations, "generate_candidates_task", lambda _id, _context=None: None)
     api = TestClient(create_app(Settings(data_dir=tmp_path)))
     response = api.post(
         f"/api/v1/document-collections/{collection['id']}/generations",

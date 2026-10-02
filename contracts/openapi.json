@@ -938,6 +938,16 @@
             "title": "Collection Id",
             "type": "string"
           },
+          "collection_trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "config": {
             "additionalProperties": true,
             "title": "Config",
@@ -999,6 +1009,16 @@
           "target_multi_count": {
             "title": "Target Multi Count",
             "type": "integer"
+          },
+          "trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -1958,6 +1978,16 @@
             ],
             "title": "Target Latency Ms"
           },
+          "target_trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "target_usage": {
             "anyOf": [
               {
@@ -1971,6 +2001,16 @@
               }
             ],
             "title": "Target Usage"
+          },
+          "trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2157,6 +2197,16 @@
             "title": "Dataset Id",
             "type": "string"
           },
+          "dataset_trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "dataset_version": {
             "title": "Dataset Version",
             "type": "integer"
@@ -2199,6 +2249,16 @@
             "title": "Prediction Batch Id",
             "type": "string"
           },
+          "prediction_trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "processed_count": {
             "title": "Processed Count",
             "type": "integer"
@@ -2225,6 +2285,16 @@
           "total_count": {
             "title": "Total Count",
             "type": "integer"
+          },
+          "trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2671,6 +2741,16 @@
             "title": "Status",
             "type": "string"
           },
+          "trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "usage": {
             "anyOf": [
               {
@@ -2816,6 +2896,16 @@
           "total_count": {
             "title": "Total Count",
             "type": "integer"
+          },
+          "trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3012,6 +3102,51 @@
           "tokens"
         ],
         "title": "TokenBucket",
+        "type": "object"
+      },
+      "TraceReference": {
+        "properties": {
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "span_id": {
+            "title": "Span Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "expired",
+              "unconfigured"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trace_id": {
+            "title": "Trace Id",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "trace_id",
+          "span_id",
+          "expires_at",
+          "status",
+          "url"
+        ],
+        "title": "TraceReference",
         "type": "object"
       },
       "UsageCall": {

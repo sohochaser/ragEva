@@ -13,13 +13,16 @@ from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
 from backend.adapters.run_store import RunInputError, RunNotFound, RunStore
 from backend.adapters.scenario_store import ScenarioNotFound, ScenarioStore
 from backend.adapters.target_store import TargetStore
+from backend.adapters.trace_store import TraceStore
 from backend.adapters.usage_store import UsageStore, summarize_calls
 from backend.api.matching import ChunkInput, KScoreResponse
 from backend.api.predictions import PredictedChunkResponse
+from backend.api.trace import TraceReference
 from backend.api.usage import UsageSummary
 from backend.config import Settings
 from backend.domain.runs import CaseStatus, MetricKey
 from backend.health import worker_is_ready
+from backend.tracing import attributes, business_span, carrier
 from backend.worker.queue import score_run_task
 
 
@@ -66,6 +69,9 @@ class RunSummary(BaseModel):
     created_at: str
     started_at: str | None
     finished_at: str | None
+    trace: TraceReference | None = None
+    prediction_trace: TraceReference | None = None
+    dataset_trace: TraceReference | None = None
 
 
 class RunCasesPage(BaseModel):
@@ -128,6 +134,8 @@ class RunCaseResponse(BaseModel):
     target_latency_ms: float | None
     target_attempts: list[dict[str, Any]] | None = None
     target_usage: dict[str, int] | None = None
+    trace: TraceReference | None = None
+    target_trace: TraceReference | None = None
 
 
 def create_run_router(settings: Settings) -> APIRouter:
@@ -137,6 +145,26 @@ def create_run_router(settings: Settings) -> APIRouter:
     models = OnlineModelStore(settings.data_dir)
     usages = UsageStore(settings.data_dir)
     targets = TargetStore(settings.data_dir)
+    traces = TraceStore(settings.data_dir)
+
+    def traced_run(run: dict[str, Any]) -> dict[str, Any]:
+        run["trace"] = traces.get("run", run["id"], settings)
+        run["prediction_trace"] = traces.get("batch", run["prediction_batch_id"], settings)
+        run["dataset_trace"] = traces.get(
+            "dataset_version", run["config"]["dataset_version_id"], settings
+        )
+        return run
+
+    def traced_cases(run_id: str, page: dict[str, Any]) -> dict[str, Any]:
+        job_id = targets.job_for_batch(store.get_run(run_id)["prediction_batch_id"])
+        for item in page["cases"]:
+            item["trace"] = traces.get("run_case", f"{run_id}:{item['case_id']}", settings)
+            item["target_trace"] = (
+                traces.get("target_case", f"{job_id}:{item['case_id']}", settings)
+                if job_id
+                else None
+            )
+        return page
 
     @router.post("", status_code=202, response_model=RunSummary)
     def create(request: RunCreate) -> dict[str, Any]:
@@ -170,16 +198,22 @@ def create_run_router(settings: Settings) -> APIRouter:
             model_path = (
                 str(Path(request.model_path).expanduser().resolve()) if request.model_path else None
             )
-            result = store.create_run(
-                request.prediction_batch_id,
-                request.model_name,
-                model_path,
-                request.offline,
-                request.threshold,
-                request.metrics,
-                request.mode,
-                answer_config,
-            )
+            with business_span("run.create") as span:
+                result = store.create_run(
+                    request.prediction_batch_id,
+                    request.model_name,
+                    model_path,
+                    request.offline,
+                    request.threshold,
+                    request.metrics,
+                    request.mode,
+                    answer_config,
+                )
+                attributes(
+                    span, **{"run.id": result["id"], "batch.id": request.prediction_batch_id}
+                )
+                traces.record("run", result["id"], span)
+                score_run_task(result["id"], carrier())
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="预测批次不存在") from exc
         except RunInputError as exc:
@@ -188,17 +222,16 @@ def create_run_router(settings: Settings) -> APIRouter:
             raise HTTPException(status_code=404, detail="场景版本不存在") from exc
         except OnlineModelNotFound as exc:
             raise HTTPException(status_code=404, detail="评分模型不存在") from exc
-        score_run_task(result["id"])
-        return result
+        return traced_run(result)
 
     @router.get("", response_model=list[RunSummary])
     def list_runs() -> list[dict[str, Any]]:
-        return store.list_runs()
+        return [traced_run(run) for run in store.list_runs()]
 
     @router.get("/{run_id}", response_model=RunSummary)
     def get_run(run_id: str) -> dict[str, Any]:
         try:
-            return store.get_run(run_id)
+            return traced_run(store.get_run(run_id))
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="评测运行不存在") from exc
 
@@ -210,7 +243,7 @@ def create_run_router(settings: Settings) -> APIRouter:
         status: CaseStatus | None = None,
     ) -> dict[str, Any]:
         try:
-            return store.get_cases(run_id, offset, limit, status)
+            return traced_cases(run_id, store.get_cases(run_id, offset, limit, status))
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="评测运行不存在") from exc
 
@@ -234,10 +267,10 @@ def create_run_router(settings: Settings) -> APIRouter:
         status: CaseStatus | None = None,
     ) -> Response:
         try:
-            run = store.get_run(run_id)
+            run = traced_run(store.get_run(run_id))
             cases: list[dict[str, Any]] = []
             while True:
-                page = store.get_cases(run_id, len(cases), 1000, status)
+                page = traced_cases(run_id, store.get_cases(run_id, len(cases), 1000, status))
                 cases.extend(page["cases"])
                 if len(cases) >= page["total"]:
                     break
@@ -261,6 +294,8 @@ def create_run_router(settings: Settings) -> APIRouter:
             "error",
             "target_latency_ms",
             "elapsed_ms",
+            "trace_id",
+            "target_trace_id",
             "precision_at_10",
             "precision_at_20",
             "ap_at_10",
@@ -279,6 +314,10 @@ def create_run_router(settings: Settings) -> APIRouter:
         for case in cases:
             score = case["score"]
             row = {key: case[key] for key in columns[:8]}
+            row["trace_id"] = case["trace"]["trace_id"] if case["trace"] else None
+            row["target_trace_id"] = (
+                case["target_trace"]["trace_id"] if case["target_trace"] else None
+            )
             for k in (10, 20):
                 at_k = score["scores"].get(str(k)) if score else None
                 for field, source in (("precision", "precision"), ("ap", "ap"), ("ndcg", "ndcg")):
@@ -306,7 +345,7 @@ def create_run_router(settings: Settings) -> APIRouter:
     @router.post("/{run_id}/cancel", response_model=RunSummary)
     def cancel(run_id: str) -> dict[str, Any]:
         try:
-            return store.cancel(run_id)
+            return traced_run(store.cancel(run_id))
         except RunNotFound as exc:
             raise HTTPException(status_code=404, detail="评测运行不存在") from exc
 

@@ -10,8 +10,10 @@ from pydantic import BaseModel
 
 from backend.adapters.dataset_files import read_rows
 from backend.adapters.dataset_store import DatasetNotFound, DatasetStore
+from backend.adapters.trace_store import TraceStore
 from backend.config import Settings
 from backend.domain.datasets import ImportIssue, parse_field_mapping, validate_cases
+from backend.tracing import attributes, business_span
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
@@ -76,6 +78,7 @@ def _failure(issues: list[ImportIssue]) -> JSONResponse:
 def create_dataset_router(settings: Settings) -> APIRouter:
     router = APIRouter(prefix="/api/v1/datasets", tags=["datasets"])
     store = DatasetStore(settings.data_dir)
+    traces = TraceStore(settings.data_dir)
 
     @router.post(
         "/import",
@@ -113,7 +116,10 @@ def create_dataset_router(settings: Settings) -> APIRouter:
         if issues:
             return _failure(issues)
         try:
-            summary = store.import_cases(name, target_id, filename, cases)
+            with business_span("dataset.import") as span:
+                summary = store.import_cases(name, target_id, filename, cases)
+                attributes(span, **{"dataset.id": summary["dataset_id"], "count": len(cases)})
+                traces.record("dataset_version", summary["id"], span)
         except DatasetNotFound as exc:
             raise HTTPException(status_code=404, detail="数据集不存在") from exc
         return VersionSummary(**summary)

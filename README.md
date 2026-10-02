@@ -27,6 +27,8 @@ make dev
 
 可选环境变量：`RAGEVA_DATA_DIR`（默认 `.local`）、`RAGEVA_API_HOST`（默认 `127.0.0.1`）、`RAGEVA_API_PORT`（默认 `8000`）、`RAGEVA_API_URL`（前端代理目标，默认 `http://127.0.0.1:8000`）、`RAGEVA_HEARTBEAT_INTERVAL`（默认 2 秒）、`RAGEVA_WORKER_STALE_AFTER`（默认 8 秒）。无效端口或间隔会在启动时报告配置错误。
 
+评测运行、目标采集和候选生成支持 OpenTelemetry trace 关联；配置 OTLP HTTP 接收端和 Jaeger UI 后，结果页可打开对应 trace，并按默认 30 天或自定义保留期提示过期。配置与隐私边界见[全链路 trace](docs/tracing.md)。
+
 ## 自动化检查
 
 ```sh
@@ -46,3 +48,4 @@ make check
 - [预测文件导入格式](docs/prediction-format.md)
 - [本地向量匹配预览](docs/local-matching.md)
 - [候选生成说明](docs/generations.md)
+- [全链路 trace 与保留期](docs/tracing.md)

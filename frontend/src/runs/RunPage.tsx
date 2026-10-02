@@ -6,6 +6,7 @@ import { cancelRun, createRun, exportRunUrl, fetchRun, fetchRunCases, fetchRuns,
 import { fetchModels, fetchScenarios, fetchScenarioVersions, type OnlineModel, type Scenario } from '../api/scenarios'
 import { fetchRunUsage, type UsageSummary } from '../api/usage'
 import { UsagePanel } from '../usage/UsagePanel'
+import { TraceLink } from '../trace/TraceLink'
 import { RunAggregateView, RunCaseDetail } from './RunResults'
 
 const statusLabels: Record<string, string> = {
@@ -114,6 +115,7 @@ export function RunPage() {
       <section className="dataset-workspace" aria-label="运行详情">{selected ? <>
         <div className="dataset-toolbar"><div><h2>运行 {selected.id.slice(0, 8)}</h2><span>{statusLabels[selected.status] ?? selected.status} · {selected.processed_count}/{selected.total_count} 题</span></div><div className="run-actions"><a className="secondary-button" href={exportRunUrl(selected.id, 'csv', caseStatus)} download><Download size={15} />CSV</a><a className="secondary-button" href={exportRunUrl(selected.id, 'json', caseStatus)} download><Download size={15} />JSON</a>{['queued', 'running'].includes(selected.status) && <button type="button" className="secondary-button" onClick={() => void cancel()}><Ban size={15} />取消</button>}</div></div>
         <div className="run-summary"><span>成功 {selected.success_count}</span><span>失败 {selected.failed_count}</span><span>不适用 {selected.not_applicable_count}</span><span>取消 {selected.cancelled_count}</span></div>
+        <div className="trace-links"><TraceLink trace={selected.trace} label="评测 trace" /><TraceLink trace={selected.prediction_trace} label="预测批次 trace" /><TraceLink trace={selected.dataset_trace} label="数据集版本 trace" /></div>
         <RunAggregateView run={selected} />
         <UsagePanel usage={usage} />
         <div className="run-case-workspace"><div className="run-case-list"><div className="pane-heading"><h3>逐题结果</h3><select aria-label="筛选状态" value={caseStatus} onChange={(event) => { setCaseStatus(event.target.value as CaseStatus | ''); setOffset(0) }}><option value="">全部 · {selected.total_count}</option>{(['success', 'failed', 'not_applicable', 'pending', 'cancelled'] as const).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></div>{cases?.cases.map((item) => <button type="button" className={`run-case-row ${item.case_id === caseId ? 'active' : ''}`} key={item.case_id} onClick={() => setCaseId(item.case_id)}><code>{item.case_id}</code><span>{statusLabels[item.status] ?? item.status}</span>{item.error && <small>{item.error}</small>}</button>)}{cases?.total === 0 && <p className="preview-empty">无匹配结果</p>}</div>{selectedCase ? <RunCaseDetail key={selectedCase.case_id} item={selectedCase} /> : <div className="empty-detail">选择样本</div>}</div>

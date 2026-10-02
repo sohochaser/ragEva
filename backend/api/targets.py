@@ -11,11 +11,14 @@ from pydantic import BaseModel, Field, SecretStr, field_validator
 from backend.adapters.http_target import call_json_target
 from backend.adapters.sse_target import call_sse_target
 from backend.adapters.target_store import TargetJobNotFound, TargetNotFound, TargetStore
+from backend.adapters.trace_store import TraceStore
 from backend.adapters.usage_store import UsageStore
+from backend.api.trace import TraceReference
 from backend.api.usage import UsageSummary
 from backend.config import Settings
 from backend.domain.predictions import EvaluationType
 from backend.health import worker_is_ready
+from backend.tracing import attributes, business_span, carrier, fail
 from backend.worker.queue import collect_target_task
 
 
@@ -99,6 +102,7 @@ class TargetJobSummary(BaseModel):
     created_at: str
     started_at: str | None
     finished_at: str | None
+    trace: TraceReference | None = None
 
 
 class TargetJobCase(BaseModel):
@@ -108,6 +112,7 @@ class TargetJobCase(BaseModel):
     attempts: list[dict[str, Any]] | None
     usage: dict[str, int] | None
     elapsed_ms: float | None
+    trace: TraceReference | None = None
 
 
 def create_target_router(settings: Settings) -> APIRouter:
@@ -138,16 +143,22 @@ def create_target_router(settings: Settings) -> APIRouter:
             raise HTTPException(status_code=404, detail="目标不存在") from exc
         with httpx.Client() as client:
             caller = call_sse_target if target["protocol"] == "sse" else call_json_target
-            result = caller(
-                client,
-                target["url"],
-                token,
-                request.case_id,
-                request.question,
-                request.evaluation_type,
-                target["timeout_seconds"],
-                target["retries"],
-            )
+            with business_span("target.test") as span:
+                attributes(span, **{"target.id": target_id, "protocol": target["protocol"]})
+                result = caller(
+                    client,
+                    target["url"],
+                    token,
+                    request.case_id,
+                    request.question,
+                    request.evaluation_type,
+                    target["timeout_seconds"],
+                    target["retries"],
+                )
+                if result.error:
+                    fail(span, result.error)
+                else:
+                    attributes(span, **{"status": "success"})
         return {
             "success": result.prediction is not None,
             "error": result.error,
@@ -166,40 +177,51 @@ def create_target_job_router(settings: Settings) -> APIRouter:
     router = APIRouter(prefix="/api/v1/target-jobs", tags=["target-jobs"])
     store = TargetStore(settings.data_dir)
     usages = UsageStore(settings.data_dir)
+    traces = TraceStore(settings.data_dir)
+
+    def traced_job(job: dict[str, Any]) -> dict[str, Any]:
+        job["trace"] = traces.get("target_job", job["id"], settings)
+        return job
 
     @router.post("", status_code=202, response_model=TargetJobSummary)
     def create(request: TargetJobCreate) -> dict[str, Any]:
         if not worker_is_ready(settings.data_dir, settings.worker_stale_after):
             raise HTTPException(status_code=503, detail="Worker 不可用")
         try:
-            job = store.create_job(
-                request.target_id,
-                request.dataset_id,
-                request.dataset_version,
-                request.evaluation_type,
-            )
+            with business_span("target.collect.create") as span:
+                job = store.create_job(
+                    request.target_id,
+                    request.dataset_id,
+                    request.dataset_version,
+                    request.evaluation_type,
+                )
+                attributes(span, **{"job.id": job["id"], "dataset.id": request.dataset_id})
+                traces.record("target_job", job["id"], span)
+                collect_target_task(job["id"], carrier())
         except TargetNotFound as exc:
             raise HTTPException(status_code=404, detail="目标不存在") from exc
         except TargetJobNotFound as exc:
             raise HTTPException(status_code=404, detail="数据集版本不存在") from exc
-        collect_target_task(job["id"])
-        return job
+        return traced_job(job)
 
     @router.get("", response_model=list[TargetJobSummary])
     def list_jobs() -> list[dict[str, Any]]:
-        return store.list_jobs()
+        return [traced_job(job) for job in store.list_jobs()]
 
     @router.get("/{job_id}", response_model=TargetJobSummary)
     def get_job(job_id: str) -> dict[str, Any]:
         try:
-            return store.get_job(job_id)
+            return traced_job(store.get_job(job_id))
         except TargetJobNotFound as exc:
             raise HTTPException(status_code=404, detail="采集任务不存在") from exc
 
     @router.get("/{job_id}/cases", response_model=list[TargetJobCase])
     def job_cases(job_id: str) -> list[dict[str, Any]]:
         try:
-            return store.job_cases(job_id)
+            cases = store.job_cases(job_id)
+            for item in cases:
+                item["trace"] = traces.get("target_case", f"{job_id}:{item['case_id']}", settings)
+            return cases
         except TargetJobNotFound as exc:
             raise HTTPException(status_code=404, detail="采集任务不存在") from exc
 

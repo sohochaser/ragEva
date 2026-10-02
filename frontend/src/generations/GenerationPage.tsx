@@ -6,6 +6,7 @@ import { addModel, fetchModels, type OnlineModel } from '../api/scenarios'
 import { fetchCandidates, fetchGeneration, fetchGenerations, startGeneration, type GeneratedCandidate, type GenerationRun } from '../api/generations'
 import { fetchGenerationUsage, type UsageSummary } from '../api/usage'
 import { UsagePanel } from '../usage/UsagePanel'
+import { TraceLink } from '../trace/TraceLink'
 
 const reasonLabels: Record<string, string> = {
   insufficient_source_chunks: '集合中没有足够的 chunk 组成多 chunk 题目',
@@ -157,6 +158,7 @@ export function GenerationPage({ onOpenCollections }: { onOpenCollections?: () =
       <aside className="generation-list"><div className="pane-heading"><h2>生成任务</h2><span>{runs.length}</span></div>{runs.map((run) => <button type="button" key={run.id} className={`dataset-row ${selectedId === run.id ? 'active' : ''}`} onClick={() => setSelectedId(run.id)}><strong>{collections.find((item) => item.id === run.collection_id)?.name || run.collection_id}</strong><span>{statusLabels[run.status] || run.status} · {run.actual_count}/{run.target_count}</span></button>)}</aside>
       <section className="generation-results" aria-label="候选结果">{selected ? <>
         <div className="dataset-toolbar"><div><h2>{collections.find((item) => item.id === selected.collection_id)?.name || '生成任务'}</h2><span>{statusLabels[selected.status] || selected.status} · 已调用 {selected.attempted_count}/{selected.max_calls}</span></div><span className="generation-count">候选 {selected.actual_count}/{selected.target_count} · 多 chunk {selected.actual_multi_count}/{selected.target_multi_count}</span></div>
+        <div className="trace-links"><TraceLink trace={selected.trace} label="生成 trace" /><TraceLink trace={selected.collection_trace} label="来源集合 trace" /></div>
         {selected.shortfall_reasons.length > 0 && <div className="generation-shortfall" role="status">{selected.shortfall_reasons.map((reason) => <span key={reason}>{reasonLabels[reason] || reason}</span>)}{Object.entries(selected.attempt_errors).map(([reason, count]) => <span key={reason}>{reason} · {count} 次</span>)}</div>}
         <UsagePanel usage={usage} />
         {candidates.length ? <ol className="generation-candidates">{candidates.map((item) => <li key={item.id} className="generation-candidate"><div className="generation-candidate-heading"><span>{item.multi_chunk ? '多 chunk' : '单 chunk'} · 待审核</span><span>{item.model_name}</span></div><h3>{item.question}</h3><p className="generation-answer"><ArrowRight size={15} />{item.reference_answer}</p><div className="generation-evidence"><strong>支撑 chunk</strong>{item.reference_chunks.map((chunk, index) => <div key={`${item.id}-${index}`}><code>{chunk.document_id}</code><p>{chunk.text}</p></div>)}</div></li>)}</ol> : <div className="empty-state"><Sparkles size={28} /><h2>{selected.status === 'queued' || selected.status === 'running' ? '正在等待候选' : '暂无合格候选'}</h2></div>}

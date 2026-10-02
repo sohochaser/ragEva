@@ -8,11 +8,14 @@ from pydantic import BaseModel, Field, field_validator
 from backend.adapters.document_store import CollectionNotFound
 from backend.adapters.generation_store import GenerationNotFound, GenerationStore
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
+from backend.adapters.trace_store import TraceStore
 from backend.adapters.usage_store import UsageStore
+from backend.api.trace import TraceReference
 from backend.api.usage import UsageSummary
 from backend.config import Settings
 from backend.domain.generation import PROMPT_VERSION, multi_chunk_target
 from backend.health import worker_is_ready
+from backend.tracing import attributes, business_span, carrier
 from backend.worker.queue import generate_candidates_task
 
 
@@ -51,6 +54,8 @@ class GenerationSummary(BaseModel):
     created_at: str
     started_at: str | None
     finished_at: str | None
+    trace: TraceReference | None = None
+    collection_trace: TraceReference | None = None
 
 
 class CandidateChunk(BaseModel):
@@ -78,6 +83,12 @@ def create_generation_router(settings: Settings) -> APIRouter:
     store = GenerationStore(settings.data_dir)
     models = OnlineModelStore(settings.data_dir)
     usages = UsageStore(settings.data_dir)
+    traces = TraceStore(settings.data_dir)
+
+    def traced_run(run: dict[str, Any]) -> dict[str, Any]:
+        run["trace"] = traces.get("generation", run["id"], settings)
+        run["collection_trace"] = traces.get("collection", run["collection_id"], settings)
+        return run
 
     @router.post(
         "/api/v1/document-collections/{collection_id}/generations",
@@ -112,25 +123,28 @@ def create_generation_router(settings: Settings) -> APIRouter:
             "temperature": 0.3,
             "response_format": "json_object",
         }
-        result = store.create_run(
-            collection_id,
-            config,
-            request.target_count,
-            multi_chunk_target(request.target_count, request.multi_chunk_ratio),
-            max_calls,
-            request.max_concurrency,
-        )
-        generate_candidates_task(result["id"])
-        return result
+        with business_span("generation.create") as span:
+            result = store.create_run(
+                collection_id,
+                config,
+                request.target_count,
+                multi_chunk_target(request.target_count, request.multi_chunk_ratio),
+                max_calls,
+                request.max_concurrency,
+            )
+            attributes(span, **{"generation.id": result["id"], "collection.id": collection_id})
+            traces.record("generation", result["id"], span)
+            generate_candidates_task(result["id"], carrier())
+        return traced_run(result)
 
     @router.get("/api/v1/generations", response_model=list[GenerationSummary])
     def list_runs() -> list[dict[str, Any]]:
-        return store.list_runs()
+        return [traced_run(run) for run in store.list_runs()]
 
     @router.get("/api/v1/generations/{run_id}", response_model=GenerationSummary)
     def get_run(run_id: str) -> dict[str, Any]:
         try:
-            return store.get(run_id)
+            return traced_run(store.get(run_id))
         except GenerationNotFound as exc:
             raise HTTPException(status_code=404, detail="生成任务不存在") from exc
 

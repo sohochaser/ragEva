@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { RunCase, RunSummary } from '../api/runs'
+import { TraceLink } from '../trace/TraceLink'
 
 type Metric = 'precision' | 'map' | 'ndcg'
 const metricLabels: Record<Metric, string> = { precision: 'Precision', map: 'MAP', ndcg: 'NDCG' }
@@ -42,6 +43,7 @@ export function RunCaseDetail({ item }: { item: RunCase }) {
   const answerMetrics = item.answer_metrics ?? {}
   return <section className="run-case-detail" aria-label="逐题详情">
     <div className="detail-heading"><span className="eyebrow">CASE DETAIL</span><code>{item.case_id}</code></div>
+    <div className="trace-links"><TraceLink trace={item.trace} label="评分 trace" /><TraceLink trace={item.target_trace} label="目标调用 trace" /></div>
     <h3>{item.question}</h3>
     {item.error && <p className="form-error" role="alert">{item.error}</p>}
     <div className="run-answer-grid"><div><h4>标准答案</h4><p>{item.reference_answer ?? '不适用'}</p></div><div><h4>预测答案</h4><p>{item.answer ?? '未提供'}</p></div></div>

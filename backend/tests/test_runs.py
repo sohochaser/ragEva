@@ -30,7 +30,7 @@ def api_with_batch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Tes
     from backend.api import runs
 
     monkeypatch.setattr(runs, "worker_is_ready", lambda *_: True)
-    monkeypatch.setattr(runs, "score_run_task", lambda _run_id: None)
+    monkeypatch.setattr(runs, "score_run_task", lambda _run_id, _context=None: None)
     api = TestClient(create_app(Settings(data_dir=tmp_path)))
     gold_rows = [
         {

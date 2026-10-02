@@ -392,3 +392,7 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
   .sidebar nav { gap: 1px; }
   .nav-item { gap: 3px; padding: 0 4px; font-size: 10px; }
 }
+.trace-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }
+.trace-link, .trace-status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; line-height: 1.5; }
+.trace-link { color: #146b60; text-decoration: underline; text-underline-offset: 2px; }
+.trace-status { color: #765828; }

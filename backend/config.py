@@ -4,6 +4,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def _positive_int(name: str, raw: str, maximum: int | None = None) -> int:
@@ -17,6 +18,23 @@ def _positive_int(name: str, raw: str, maximum: int | None = None) -> int:
     return value
 
 
+def _service_url(name: str, raw: str) -> str | None:
+    value = raw.strip().rstrip("/")
+    if not value:
+        return None
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(f"{name} must be an HTTP(S) URL without credentials or query")
+    return value
+
+
 @dataclass(frozen=True)
 class Settings:
     data_dir: Path
@@ -24,6 +42,9 @@ class Settings:
     api_port: int = 8000
     heartbeat_interval: int = 2
     worker_stale_after: int = 8
+    jaeger_url: str | None = None
+    trace_retention_days: int = 30
+    otlp_traces_endpoint: str | None = None
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
@@ -40,5 +61,12 @@ class Settings:
             ),
             worker_stale_after=_positive_int(
                 "RAGEVA_WORKER_STALE_AFTER", values.get("RAGEVA_WORKER_STALE_AFTER", "8")
+            ),
+            jaeger_url=_service_url("RAGEVA_JAEGER_URL", values.get("RAGEVA_JAEGER_URL", "")),
+            trace_retention_days=_positive_int(
+                "RAGEVA_TRACE_RETENTION_DAYS", values.get("RAGEVA_TRACE_RETENTION_DAYS", "30")
+            ),
+            otlp_traces_endpoint=_service_url(
+                "RAGEVA_OTLP_TRACES_ENDPOINT", values.get("RAGEVA_OTLP_TRACES_ENDPOINT", "")
             ),
         )
