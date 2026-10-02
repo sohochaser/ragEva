@@ -1,6 +1,49 @@
 {
   "components": {
     "schemas": {
+      "Body_create_collection_api_v1_document_collections_post": {
+        "properties": {
+          "chunk_overlap": {
+            "default": 100,
+            "title": "Chunk Overlap",
+            "type": "integer"
+          },
+          "chunk_size": {
+            "default": 1000,
+            "title": "Chunk Size",
+            "type": "integer"
+          },
+          "document_ids": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Ids"
+          },
+          "files": {
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "files",
+          "name"
+        ],
+        "title": "Body_create_collection_api_v1_document_collections_post",
+        "type": "object"
+      },
       "Body_import_dataset_api_v1_datasets_import_post": {
         "properties": {
           "dataset_id": {
@@ -221,6 +264,121 @@
         "title": "ChunkInput",
         "type": "object"
       },
+      "CollectionDetail": {
+        "properties": {
+          "chunk_overlap": {
+            "title": "Chunk Overlap",
+            "type": "integer"
+          },
+          "chunk_size": {
+            "title": "Chunk Size",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_count": {
+            "title": "Document Count",
+            "type": "integer"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/SourceDocumentResponse"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "source_kind",
+          "chunk_size",
+          "chunk_overlap",
+          "created_at",
+          "document_count",
+          "documents"
+        ],
+        "title": "CollectionDetail",
+        "type": "object"
+      },
+      "CollectionImportFailure": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentIssueResponse"
+            },
+            "title": "Issues",
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "issues"
+        ],
+        "title": "CollectionImportFailure",
+        "type": "object"
+      },
+      "CollectionSummary": {
+        "properties": {
+          "chunk_overlap": {
+            "title": "Chunk Overlap",
+            "type": "integer"
+          },
+          "chunk_size": {
+            "title": "Chunk Size",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_count": {
+            "title": "Document Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "source_kind",
+          "chunk_size",
+          "chunk_overlap",
+          "created_at",
+          "document_count"
+        ],
+        "title": "CollectionSummary",
+        "type": "object"
+      },
       "DatasetSummary": {
         "properties": {
           "created_at": {
@@ -257,6 +415,53 @@
           "latest_case_count"
         ],
         "title": "DatasetSummary",
+        "type": "object"
+      },
+      "DocumentIssueResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "file_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Index"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_index",
+          "filename",
+          "field",
+          "code",
+          "message"
+        ],
+        "title": "DocumentIssueResponse",
         "type": "object"
       },
       "EdgeDecisionResponse": {
@@ -1309,6 +1514,60 @@
         "title": "SelectedMatchResponse",
         "type": "object"
       },
+      "SourceChunkResponse": {
+        "properties": {
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "text"
+        ],
+        "title": "SourceChunkResponse",
+        "type": "object"
+      },
+      "SourceDocumentResponse": {
+        "properties": {
+          "byte_count": {
+            "title": "Byte Count",
+            "type": "integer"
+          },
+          "checksum": {
+            "title": "Checksum",
+            "type": "string"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/SourceChunkResponse"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "document_id",
+          "checksum",
+          "byte_count",
+          "chunks"
+        ],
+        "title": "SourceDocumentResponse",
+        "type": "object"
+      },
       "TargetCreate": {
         "properties": {
           "bearer_token": {
@@ -2128,6 +2387,112 @@
         "summary": "Get Case",
         "tags": [
           "datasets"
+        ]
+      }
+    },
+    "/api/v1/document-collections": {
+      "get": {
+        "operationId": "list_collections_api_v1_document_collections_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionSummary"
+                  },
+                  "title": "Response List Collections Api V1 Document Collections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Collections",
+        "tags": [
+          "document-collections"
+        ]
+      },
+      "post": {
+        "operationId": "create_collection_api_v1_document_collections_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_collection_api_v1_document_collections_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionImportFailure"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Create Collection",
+        "tags": [
+          "document-collections"
+        ]
+      }
+    },
+    "/api/v1/document-collections/{collection_id}": {
+      "get": {
+        "operationId": "get_collection_api_v1_document_collections__collection_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Collection",
+        "tags": [
+          "document-collections"
         ]
       }
     },

@@ -1,8 +1,9 @@
-import { Activity, ArrowUpRight, Database, FileInput, Globe2, RefreshCw, Server, Workflow } from 'lucide-react'
+import { Activity, ArrowUpRight, Database, FileInput, Files, Globe2, RefreshCw, Server, Workflow } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { readHealth, type ServiceState } from './api/health'
 import { DatasetPage } from './datasets/DatasetPage'
+import { DocumentCollectionPage } from './documents/DocumentCollectionPage'
 import { PredictionPage } from './predictions/PredictionPage'
 import { RunPage } from './runs/RunPage'
 import { TargetPage } from './targets/TargetPage'
@@ -76,7 +77,7 @@ export function StatusDashboard({ api, worker, refreshedAt, onRefresh }: StatusD
 }
 
 export function App() {
-  const [page, setPage] = useState<'datasets' | 'predictions' | 'targets' | 'runs' | 'status'>('datasets')
+  const [page, setPage] = useState<'documents' | 'datasets' | 'predictions' | 'targets' | 'runs' | 'status'>('documents')
   const [api, setApi] = useState<ServiceState>('checking')
   const [worker, setWorker] = useState<ServiceState>('checking')
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
@@ -99,6 +100,7 @@ export function App() {
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark">r</span><span>ragEva</span></div>
         <nav aria-label="主导航">
+          <button type="button" className={`nav-item ${page === 'documents' ? 'nav-active' : ''}`} onClick={() => setPage('documents')}><Files size={17} aria-hidden="true" />文档集合</button>
           <button type="button" className={`nav-item ${page === 'datasets' ? 'nav-active' : ''}`} onClick={() => setPage('datasets')}><Database size={17} aria-hidden="true" />数据集</button>
           <button type="button" className={`nav-item ${page === 'predictions' ? 'nav-active' : ''}`} onClick={() => setPage('predictions')}><FileInput size={17} aria-hidden="true" />预测批次</button>
           <button type="button" className={`nav-item ${page === 'targets' ? 'nav-active' : ''}`} onClick={() => setPage('targets')}><Globe2 size={17} aria-hidden="true" />HTTP 目标</button>
@@ -108,6 +110,7 @@ export function App() {
         <div className="sidebar-foot">本机工作台</div>
       </aside>
       <main className="main-content">
+        <div hidden={page !== 'documents'}><DocumentCollectionPage /></div>
         <div hidden={page !== 'datasets'}><DatasetPage /></div>
         <div hidden={page !== 'predictions'}><PredictionPage /></div>
         <div hidden={page !== 'targets'}><TargetPage /></div>

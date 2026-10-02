@@ -169,6 +169,15 @@ h1 { margin: 0; font-size: 27px; font-weight: 650; line-height: 1.25; }
 .import-issues { max-height: 180px; overflow: auto; padding: 12px; border: 1px solid #e9c8c4; border-radius: 4px; background: #fff7f6; color: #9c3b34; font-size: 12px; }
 .import-issues ul { margin: 8px 0 0; padding-left: 18px; }
 .import-issues li + li { margin-top: 5px; }
+.document-file-ids { display: grid; gap: 10px; max-height: 220px; overflow: auto; }
+.document-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.document-detail-list { max-height: 76vh; overflow: auto; }
+.document-detail { padding: 20px 22px; border-bottom: 1px solid #e3e9e7; }
+.document-detail-header { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+.document-detail-header svg { color: #277d6e; }
+.document-detail-header code { color: #536964; font-size: 11px; }
+.document-meta { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 15px; color: #647671; font-size: 11px; }
+.document-meta code { overflow-wrap: anywhere; }
 .form-error { margin: 0; color: #a63e35; font-size: 12px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 5px; }
 

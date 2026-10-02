@@ -6,6 +6,7 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 from backend.api.datasets import create_dataset_router
+from backend.api.document_collections import create_document_collection_router
 from backend.api.matching import create_matching_router
 from backend.api.predictions import create_prediction_router
 from backend.api.runs import create_run_router
@@ -23,6 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or Settings.from_env()
     application = FastAPI(title="ragEva API", version="0.1.0")
     application.include_router(create_dataset_router(config))
+    application.include_router(create_document_collection_router(config))
     application.include_router(create_prediction_router(config))
     application.include_router(create_matching_router(config))
     application.include_router(create_run_router(config))
