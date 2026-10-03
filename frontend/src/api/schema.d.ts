@@ -399,6 +399,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/online-models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update */
+        put: operations["update_api_v1_online_models__model_id__put"];
+        post?: never;
+        /** Delete */
+        delete: operations["delete_api_v1_online_models__model_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/predictions": {
         parameters: {
             query?: never;
@@ -1307,6 +1325,22 @@ export interface components {
             /** Name */
             name: string;
             /** Timeout Seconds */
+            timeout_seconds: number;
+        };
+        /** OnlineModelUpdate */
+        OnlineModelUpdate: {
+            /** Base Url */
+            base_url: string;
+            /** Bearer Token */
+            bearer_token?: string | null;
+            /** Model Name */
+            model_name: string;
+            /** Name */
+            name: string;
+            /**
+             * Timeout Seconds
+             * @default 60
+             */
             timeout_seconds: number;
         };
         /** PredictedChunkResponse */
@@ -2883,6 +2917,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OnlineModelSummary"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_api_v1_online_models__model_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnlineModelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnlineModelSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_api_v1_online_models__model_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

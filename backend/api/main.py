@@ -2,7 +2,10 @@
 
 from typing import Literal
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.api.datasets import create_dataset_router
@@ -38,6 +41,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(create_target_job_router(config))
     application.include_router(create_model_router(config))
     application.include_router(create_scenario_router(config))
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, error: RequestValidationError) -> Response:
+        if request.url.path.startswith("/api/v1/online-models"):
+            details = [
+                {key: value for key, value in issue.items() if key in {"type", "loc", "msg"}}
+                for issue in error.errors()
+            ]
+            return JSONResponse(status_code=422, content={"detail": details})
+        return await request_validation_exception_handler(request, error)
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live() -> HealthResponse:

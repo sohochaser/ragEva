@@ -29,7 +29,7 @@ RAGEVA_DOWNLOAD_TOKEN='<专用 Token>' uv run python -m backend.download
 
 默认监听 `127.0.0.1:8001`。远程访问时配置 `RAGEVA_DOWNLOAD_HOST`（监听地址）、`RAGEVA_DOWNLOAD_PORT` 和 `RAGEVA_DOWNLOAD_PUBLIC_URL`（远程客户端可访问的 HTTP(S) 基础 URL，例如 `https://files.example.test`）；网络和 TLS 由部署环境提供。下载进程缺少 Token 时拒绝启动。持 Token 请求 `GET /download/v1/collections/{集合 ID}/manifest`，再按清单中的 `download_url` 请求文件，两次请求均需 `Authorization: Bearer <专用 Token>`。清单包含上传时固定的 `document_id`、文件名和 SHA-256；文件返回上传时的原始字节。chunk-only 集合的清单标为 `chunks_only` 且没有文件项。
 
-候选生成页可配置独立的在线 OpenAI 兼容模型，选择任一文档集合，指定目标条数、多 chunk 比例、语言和题型，异步生成待审核候选。页面显示进度、实际/目标数量、失败与不足额原因，并保留每题引用的集合 chunk。审核者可在候选项中修改问题、答案，增删和重排当前集合的参考 chunk，保存修订、批准或驳回，并查看历史。同集合查重自动比较历次候选和已发布快照；明确重复阻止发布，疑似重复须填写放行理由。已批准且通过查重的候选可发布为新数据集或加入已有数据集的新版本，旧版本仍可读取。模型 Token 单独保存在受保护的本机文件中，不进入任务快照。配额、审核、查重与发布规则见[候选生成说明](docs/generations.md)。
+候选生成页可配置独立的在线 OpenAI 兼容模型，选择任一文档集合，指定目标条数、多 chunk 比例、语言和题型，异步生成待审核候选。添加或修改模型时会实际调用一次 Chat Completions 接口验证模型、地址、凭据和 JSON 响应；校验失败不保存。页面可编辑或删除空闲模型，在途任务引用的模型暂不可改删。页面显示进度、实际/目标数量、失败与不足额原因，并保留每题引用的集合 chunk。审核者可在候选项中修改问题、答案，增删和重排当前集合的参考 chunk，保存修订、批准或驳回，并查看历史。同集合查重自动比较历次候选和已发布快照；明确重复阻止发布，疑似重复须填写放行理由。已批准且通过查重的候选可发布为新数据集或加入已有数据集的新版本，旧版本仍可读取。模型 Token 单独保存在受保护的本机文件中，不进入任务快照。配额、审核、查重与发布规则见[候选生成说明](docs/generations.md)。
 
 预测批次页可导入已有 RAG 系统的 CSV/JSONL 答案与有序检索 chunk，绑定已有数据集版本，或从同一文件同时建立金标准数据集。字段、评测类型和未匹配计数见[预测文件格式](docs/prediction-format.md)。
 
