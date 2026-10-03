@@ -1504,6 +1504,7 @@
       "OnlineModelCreate": {
         "properties": {
           "base_url": {
+            "maxLength": 2048,
             "minLength": 1,
             "title": "Base Url",
             "type": "string"
@@ -1522,6 +1523,7 @@
             "title": "Bearer Token"
           },
           "model_name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Model Name",
             "type": "string"
@@ -1589,6 +1591,55 @@
           "created_at"
         ],
         "title": "OnlineModelSummary",
+        "type": "object"
+      },
+      "OnlineModelUpdate": {
+        "properties": {
+          "base_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "bearer_token": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bearer Token"
+          },
+          "model_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model Name",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "default": 60,
+            "exclusiveMinimum": 0.0,
+            "maximum": 180.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "base_url",
+          "model_name"
+        ],
+        "title": "OnlineModelUpdate",
         "type": "object"
       },
       "PredictedChunkResponse": {
@@ -5133,6 +5184,91 @@
           }
         },
         "summary": "Create",
+        "tags": [
+          "online-models"
+        ]
+      }
+    },
+    "/api/v1/online-models/{model_id}": {
+      "delete": {
+        "operationId": "delete_api_v1_online_models__model_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete",
+        "tags": [
+          "online-models"
+        ]
+      },
+      "put": {
+        "operationId": "update_api_v1_online_models__model_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnlineModelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineModelSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update",
         "tags": [
           "online-models"
         ]

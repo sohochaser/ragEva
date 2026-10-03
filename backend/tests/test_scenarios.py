@@ -15,6 +15,9 @@ from backend.domain.answer_prompts import AnswerMetric, AnswerSample, render_mes
 def test_scenario_versions_model_secret_and_preview(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from backend.api import online_models
+
+    monkeypatch.setattr(online_models, "probe_online_model", lambda *_: None)
     api = TestClient(create_app(Settings(data_dir=tmp_path)))
     model_response = api.post(
         "/api/v1/online-models",

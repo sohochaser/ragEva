@@ -1,9 +1,9 @@
-import { ArrowRight, Plus, RefreshCw, Sparkles } from 'lucide-react'
+import { ArrowRight, Pencil, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { fetchCollections, type CollectionSummary } from '../api/documentCollections'
 import type { VersionSummary } from '../api/datasets'
-import { addModel, fetchModels, type OnlineModel } from '../api/scenarios'
+import { addModel, deleteModel, fetchModels, updateModel, type OnlineModel } from '../api/scenarios'
 import { fetchCandidates, fetchGeneration, fetchGenerations, startGeneration, type GeneratedCandidate, type GenerationRun } from '../api/generations'
 import { fetchGenerationUsage, type UsageSummary } from '../api/usage'
 import { UsagePanel } from '../usage/UsagePanel'
@@ -45,10 +45,15 @@ export function GenerationPage({ onOpenCollections, onOpenDatasets }: {
   const [maxCalls, setMaxCalls] = useState('')
   const [maxConcurrency, setMaxConcurrency] = useState(4)
   const [showModelForm, setShowModelForm] = useState(false)
+  const [editingModelId, setEditingModelId] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState('')
   const [newModelName, setNewModelName] = useState('')
   const [newModelApi, setNewModelApi] = useState('')
   const [newModelId, setNewModelId] = useState('')
   const [newModelToken, setNewModelToken] = useState('')
+  const [newModelTimeout, setNewModelTimeout] = useState(60)
+  const [tokenAction, setTokenAction] = useState<'keep' | 'replace' | 'remove'>('keep')
+  const [modelMessage, setModelMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
@@ -127,28 +132,77 @@ export function GenerationPage({ onOpenCollections, onOpenDatasets }: {
     event.preventDefault()
     setBusy(true)
     setError('')
+    setModelMessage('')
     try {
-      const created = await addModel({
+      const fields = {
         name: newModelName.trim(), base_url: newModelApi.trim(), model_name: newModelId.trim(),
-        bearer_token: newModelToken || null, timeout_seconds: 60,
-      })
-      setModels((items) => [created, ...items])
-      setModelId(created.id)
-      setNewModelName(''); setNewModelApi(''); setNewModelId(''); setNewModelToken('')
-      setShowModelForm(false)
+        timeout_seconds: newModelTimeout,
+      }
+      const saved = editingModelId
+        ? await updateModel(editingModelId, {
+          ...fields,
+          ...(tokenAction === 'replace' ? { bearer_token: newModelToken } : tokenAction === 'remove' ? { bearer_token: null } : {}),
+        })
+        : await addModel({ ...fields, bearer_token: newModelToken || null })
+      setModels((items) => editingModelId ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items])
+      setModelId(saved.id)
+      setModelMessage(editingModelId ? 'Model verified and updated（模型已校验并更新）' : 'Model verified and added（模型已校验并添加）')
+      closeModelForm()
     } catch (cause) {
-      setError(uiError(cause, 'Unable to save model', '模型保存失败'))
+      setError(uiError(cause, 'Unable to verify or save model', '模型校验或保存失败'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function closeModelForm() {
+    setShowModelForm(false)
+    setEditingModelId('')
+    setNewModelName(''); setNewModelApi(''); setNewModelId(''); setNewModelToken('')
+    setNewModelTimeout(60)
+    setTokenAction('keep')
+  }
+
+  function editModel(item: OnlineModel) {
+    setEditingModelId(item.id)
+    setNewModelName(item.name)
+    setNewModelApi(item.base_url)
+    setNewModelId(item.model_name)
+    setNewModelTimeout(item.timeout_seconds)
+    setNewModelToken('')
+    setTokenAction('keep')
+    setShowModelForm(true)
+    setConfirmDeleteId('')
+    setError('')
+  }
+
+  async function removeModel(id: string) {
+    setBusy(true)
+    setError('')
+    setModelMessage('')
+    try {
+      await deleteModel(id)
+      const remaining = models.filter((item) => item.id !== id)
+      setModels(remaining)
+      setModelId((current) => current === id ? remaining[0]?.id || '' : current)
+      setConfirmDeleteId('')
+      if (editingModelId === id) closeModelForm()
+      setModelMessage('Model deleted（模型已删除）')
+    } catch (cause) {
+      setError(uiError(cause, 'Unable to delete model', '删除模型失败'))
     } finally {
       setBusy(false)
     }
   }
 
   return <>
-    <header className="page-header generation-header"><div><p className="eyebrow">Generation（生成）</p><h1>Candidate Generation（候选生成）</h1></div><div className="page-actions"><button type="button" className="secondary-button" onClick={() => setShowModelForm((value) => !value)}><Plus size={15} />Add Generation Model（添加生成模型）</button><button type="button" className="refresh-button" title="Refresh Tasks（刷新任务）" aria-label="Refresh Tasks（刷新任务）" onClick={() => void refreshRuns().catch((cause: unknown) => setError(uiError(cause, 'Refresh failed', '刷新失败')))}><RefreshCw size={17} /></button></div></header>
+    <header className="page-header generation-header"><div><p className="eyebrow">Generation（生成）</p><h1>Candidate Generation（候选生成）</h1></div><div className="page-actions"><button type="button" className="secondary-button" onClick={() => { if (showModelForm && !editingModelId) closeModelForm(); else { closeModelForm(); setShowModelForm(true) } }}><Plus size={15} />Add Generation Model（添加生成模型）</button><button type="button" className="refresh-button" title="Refresh Tasks（刷新任务）" aria-label="Refresh Tasks（刷新任务）" onClick={() => void refreshRuns().catch((cause: unknown) => setError(uiError(cause, 'Refresh failed', '刷新失败')))}><RefreshCw size={17} /></button></div></header>
     {error && <div className="page-error" role="alert">{error}<button type="button" onClick={() => setError('')}>Close（关闭）</button></div>}
+    {modelMessage && <p className="generation-model-message" role="status">{modelMessage}</p>}
     {loaded && !collections.length && <div className="generation-notice" role="status"><span>No Document Collections Yet（暂无文档集合）</span>{onOpenCollections && <button type="button" onClick={onOpenCollections}>Open Document Collections（打开文档集合） <ArrowRight size={14} /></button>}</div>}
     {loaded && !models.length && <div className="generation-notice" role="status"><span>No Generation Models Yet（暂无生成模型）</span><button type="button" onClick={() => setShowModelForm(true)}>Add Generation Model（添加生成模型） <ArrowRight size={14} /></button></div>}
-    {showModelForm && <form className="generation-model-form" onSubmit={(event) => void saveModel(event)}><label className="form-group"><span className="form-label">Configuration Name（配置名称）</span><input required value={newModelName} onChange={(event) => setNewModelName(event.target.value)} /></label><label className="form-group"><span className="form-label">OpenAI-Compatible API URL（OpenAI 兼容 API 地址）</span><input type="url" required value={newModelApi} onChange={(event) => setNewModelApi(event.target.value)} /></label><label className="form-group"><span className="form-label">Model ID（模型标识）</span><input required value={newModelId} onChange={(event) => setNewModelId(event.target.value)} /></label><label className="form-group"><span className="form-label">Bearer Token（访问令牌）</span><input type="password" autoComplete="off" value={newModelToken} onChange={(event) => setNewModelToken(event.target.value)} /></label><button className="primary-button" type="submit" disabled={busy}>Save Model（保存模型）</button></form>}
+    {models.length > 0 && <section className="generation-models" aria-label="Saved Generation Models（已保存的生成模型）"><div className="pane-heading"><h2>Saved Generation Models（已保存的生成模型）</h2><span>{models.length} models（个模型）</span></div><ul>{models.map((item) => <li key={item.id}><div className="generation-model-info"><strong>{item.name}</strong><span>{item.model_name} · {item.base_url} · {item.timeout_seconds} seconds（秒）</span></div><div className="generation-model-actions"><button type="button" className="icon-button" title={`Edit Model（编辑模型）: ${item.name}`} aria-label={`Edit Model（编辑模型）: ${item.name}`} onClick={() => editModel(item)} disabled={busy}><Pencil size={16} /></button><button type="button" className="icon-button" title={`Delete Model（删除模型）: ${item.name}`} aria-label={`Delete Model（删除模型）: ${item.name}`} onClick={() => setConfirmDeleteId(item.id)} disabled={busy}><Trash2 size={16} /></button></div>{confirmDeleteId === item.id && <div className="generation-model-confirm"><span>Delete this model configuration?（删除此模型配置？）</span><button type="button" className="secondary-button" disabled={busy} onClick={() => void removeModel(item.id)}>Confirm Delete（确认删除）</button><button type="button" className="icon-button" title="Cancel（取消）" aria-label="Cancel（取消）" onClick={() => setConfirmDeleteId('')}><X size={16} /></button></div>}</li>)}</ul></section>}
+    {showModelForm && <form className="generation-model-form" onSubmit={(event) => void saveModel(event)}><h2>{editingModelId ? 'Edit Generation Model（编辑生成模型）' : 'Add Generation Model（添加生成模型）'}</h2><label className="form-group"><span className="form-label">Configuration Name（配置名称）</span><input required maxLength={120} value={newModelName} onChange={(event) => setNewModelName(event.target.value)} /></label><label className="form-group"><span className="form-label">OpenAI-Compatible API URL（OpenAI 兼容 API 地址）</span><input type="url" required value={newModelApi} onChange={(event) => setNewModelApi(event.target.value)} /></label><label className="form-group"><span className="form-label">Model ID（模型标识）</span><input required maxLength={200} value={newModelId} onChange={(event) => setNewModelId(event.target.value)} /></label><label className="form-group"><span className="form-label">Timeout (seconds)（超时，秒）</span><input type="number" min="1" max="180" step="1" required value={newModelTimeout} onChange={(event) => setNewModelTimeout(Number(event.target.value))} /></label>{editingModelId && <label className="form-group"><span className="form-label">Bearer Token Action（访问令牌操作）</span><select value={tokenAction} onChange={(event) => { setTokenAction(event.target.value as 'keep' | 'replace' | 'remove'); setNewModelToken('') }}><option value="keep">Keep Existing Token（保留原令牌）</option><option value="replace">Replace Token（替换令牌）</option><option value="remove">Remove Token（清除令牌）</option></select></label>}{(!editingModelId || tokenAction === 'replace') && <label className="form-group"><span className="form-label">Bearer Token（访问令牌）</span><input type="password" autoComplete="off" required={tokenAction === 'replace'} value={newModelToken} onChange={(event) => setNewModelToken(event.target.value)} /></label>}<div className="generation-model-form-actions"><button className="primary-button" type="submit" disabled={busy}>{busy ? 'Verifying Model（正在校验模型）' : editingModelId ? 'Verify and Save Changes（校验并保存修改）' : 'Verify and Add Model（校验并添加模型）'}</button><button className="secondary-button" type="button" onClick={closeModelForm} disabled={busy}>Cancel（取消）</button></div></form>}
     <form className="generation-form" onSubmit={(event) => void submit(event)}>
       <label className="form-group"><span className="form-label">Document Collections（文档集合）</span><select aria-label="Document Collections（文档集合）" value={collectionId} onChange={(event) => setCollectionId(event.target.value)} required>{collections.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.source_kind === 'chunks_only' ? 'Chunk Manifest（chunk 清单）' : 'Source Files（原文）'}</option>)}</select></label>
       <label className="form-group"><span className="form-label">Generation Model（生成模型）</span><select aria-label="Generation Model（生成模型）" value={modelId} onChange={(event) => setModelId(event.target.value)} required>{models.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.model_name}</option>)}</select></label>
