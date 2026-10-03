@@ -122,4 +122,15 @@ test('document, generation, target, file and answer run paths', async ({ page, r
   await page.getByRole('button', { name: /重新评分/ }).click()
   await expect(runDetail.locator('.dataset-toolbar')).toContainText('Completed（已完成） · 1/1 cases（题）', { timeout: 30_000 })
   await expect(runDetail.locator('.run-summary')).toContainText('Succeeded（成功） 1')
+
+  const recentLogsResponse = await request.get('/api/v1/request-logs?limit=100')
+  expect(recentLogsResponse.ok()).toBeTruthy()
+  const recentLogs = await recentLogsResponse.json() as Array<{ request_id: string; method: string; route: string }>
+  const runRequest = recentLogs.find((item) => item.method === 'POST' && item.route === '/api/v1/runs')
+  expect(runRequest).toBeDefined()
+  const logResponse = await request.get(`/api/v1/request-logs/${runRequest!.request_id}`)
+  expect(logResponse.ok()).toBeTruthy()
+  const log = await logResponse.json() as { spans: Array<{ name: string }> }
+  expect(log.spans.map((span) => span.name)).toEqual(expect.arrayContaining(['http.request', 'run.create', 'run.worker', 'answer.score', 'answer.persist']))
+  expect(JSON.stringify(log)).not.toContain(source)
 })

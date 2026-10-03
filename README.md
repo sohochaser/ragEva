@@ -37,7 +37,7 @@ RAGEVA_DOWNLOAD_TOKEN='<专用 Token>' uv run python -m backend.download
 
 可选环境变量：`RAGEVA_DATA_DIR`（默认 `.local`）、`RAGEVA_API_HOST`（默认 `127.0.0.1`）、`RAGEVA_API_PORT`（默认 `8000`）、`RAGEVA_API_URL`（前端代理目标，默认 `http://127.0.0.1:8000`）、`RAGEVA_HEARTBEAT_INTERVAL`（默认 2 秒）、`RAGEVA_WORKER_STALE_AFTER`（默认 8 秒）。无效端口或间隔会在启动时报告配置错误。
 
-评测运行、目标采集和候选生成支持 OpenTelemetry trace 关联；配置 OTLP HTTP 接收端和 Jaeger UI 后，结果页可打开对应 trace，并按默认 30 天或自定义保留期提示过期。配置与隐私边界见[全链路 trace](docs/tracing.md)。
+评测运行、目标采集和候选生成支持 OpenTelemetry trace 关联；配置 OTLP HTTP 接收端和 Jaeger UI 后，结果页可打开对应 trace，并按默认 30 天或自定义保留期提示过期。System Status 可按管理 API 返回的 `X-Request-ID` 查看本机全链路步骤日志和受控错误信息，无需 Jaeger。配置与隐私边界见[全链路 trace](docs/tracing.md)。
 
 ## 自动化检查
 

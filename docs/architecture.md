@@ -86,6 +86,8 @@ Python API (FastAPI)
 
 US-022 落地：`backend/tracing.py` 配置 OTLP HTTP 异步导出并限制属性白名单；`backend/adapters/trace_store.py` 在业务 SQLite 中保存关联 ID、span ID 和生成时间，不保存 trace 正文。Huey 消息携带 W3C `traceparent`，线程池复制当前上下文。导入、生成、目标采集和评测各自埋点；目标预测批次与后续评测分别保留 trace 链接。`RAGEVA_TRACE_RETENTION_DAYS` 只计算页面过期提示，Jaeger 存储需配置相同保留期，详见 [trace 配置](tracing.md)。
 
+US-022 请求日志扩展：管理 API 为业务请求创建根 span，并通过 `X-Request-ID` 返回 trace ID。API/Worker 的已完成 span 由本机处理器写入 SQLite `request_log_spans`，仅保存白名单属性、步骤耗时、状态及受控错误信息；请求日志查询接口按根请求列出近期记录，按 ID 返回同一 trace 的时间线。System Status 使用该接口，查询本机数据库，不依赖 Jaeger 存活或其保留期。异步步骤在各自完成后可查询；功能启用前的 trace 无本机步骤记录。
+
 - `POST /api/v1/datasets/import`，`GET /api/v1/datasets/{id}/versions`
 - `POST /api/v1/document-collections`：上传 TXT/Markdown/DOCX/文本 PDF 或导入已有 chunk 清单；原文提取、切块与 `document_id` 校验后形成不可变快照。
 - `POST /api/v1/document-collections/{id}/generations`，`GET /api/v1/generations/{id}`，`GET /api/v1/generations/{id}/candidates`：生成任务接收目标条数、多 chunk 比例、语言、题型和补充要求，返回进度、实际数量和不足原因；完整 token 用量汇总由 US-021 接入。

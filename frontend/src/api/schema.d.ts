@@ -450,6 +450,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/request-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent */
+        get: operations["recent_api_v1_request_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/request-logs/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_request_logs__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs": {
         parameters: {
             query?: never;
@@ -1469,6 +1503,74 @@ export interface components {
             document_id: string;
             /** Text */
             text: string;
+        };
+        /** RequestLogDetail */
+        RequestLogDetail: {
+            /** Error Code */
+            error_code: string | null;
+            /** Http Status */
+            http_status: number;
+            /** Method */
+            method: string;
+            /** Request Id */
+            request_id: string;
+            /** Route */
+            route: string;
+            /** Spans */
+            spans: components["schemas"]["RequestLogSpan"][];
+            /** Started At */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "success" | "failed";
+        };
+        /** RequestLogSpan */
+        RequestLogSpan: {
+            /** Attributes */
+            attributes: {
+                [key: string]: unknown;
+            };
+            /** Duration Ms */
+            duration_ms: number;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Detail */
+            error_detail: string | null;
+            /** Name */
+            name: string;
+            /** Parent Span Id */
+            parent_span_id: string | null;
+            /** Span Id */
+            span_id: string;
+            /** Started At */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "success" | "failed";
+        };
+        /** RequestLogSummary */
+        RequestLogSummary: {
+            /** Error Code */
+            error_code: string | null;
+            /** Http Status */
+            http_status: number;
+            /** Method */
+            method: string;
+            /** Request Id */
+            request_id: string;
+            /** Route */
+            route: string;
+            /** Started At */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "success" | "failed";
         };
         /** RetrievalScoreResponse */
         RetrievalScoreResponse: {
@@ -2969,6 +3071,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PredictionBatchDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recent_api_v1_request_logs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestLogSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_request_logs__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestLogDetail"];
                 };
             };
             /** @description Validation Error */
