@@ -17,6 +17,8 @@ test('core forms and upload dialog remain operable across workspaces', async ({ 
 
   const nav = page.getByRole('navigation', { name: /主导航/ })
   await nav.getByRole('button', { name: /候选生成/ }).click()
+  await expect(page.getByLabel('Question Count（题目数量）')).toBeVisible()
+  await page.getByText('Generate from Existing Collection（从已有集合生成）').click()
   await expect(page.getByLabel('Target Case Count（目标条数）')).toBeVisible()
   await expect(page.getByText('Multi-Chunk Ratio（多切块比例） · 30%（百分比）')).toBeVisible()
   await nav.getByRole('button', { name: /HTTP 目标/ }).click()

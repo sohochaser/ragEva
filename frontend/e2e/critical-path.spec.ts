@@ -37,6 +37,7 @@ test('document, generation, target, file and answer run paths', async ({ page, r
   await page.getByLabel('OpenAI-Compatible API URL（OpenAI 兼容 API 地址）').fill('http://127.0.0.1:18002/v1')
   await page.getByLabel('Model ID（模型标识）').fill('fixture-model')
   await page.getByRole('button', { name: /保存模型/ }).click()
+  await page.getByText('Generate from Existing Collection（从已有集合生成）').click()
   await page.getByLabel('Target Case Count（目标条数）').fill('2')
   await page.getByRole('button', { name: /开始生成/ }).click()
   await expect(page.locator('.generation-count')).toContainText('Candidates（候选） 1/2', { timeout: 30_000 })
@@ -133,4 +134,33 @@ test('document, generation, target, file and answer run paths', async ({ page, r
   const log = await logResponse.json() as { spans: Array<{ name: string }> }
   expect(log.spans.map((span) => span.name)).toEqual(expect.arrayContaining(['http.request', 'run.create', 'run.worker', 'answer.score', 'answer.persist']))
   expect(JSON.stringify(log)).not.toContain(source)
+})
+
+test('upload and generate keeps a one-document source passage under its collection', async ({ page, request }) => {
+  await page.goto('/')
+  await navigate(page, '候选生成')
+  await page.locator('.generation-header').getByRole('button', { name: /添加生成模型/ }).click()
+  await page.getByLabel('Configuration Name（配置名称）').fill('Quick E2E Model')
+  await page.getByLabel('OpenAI-Compatible API URL（OpenAI 兼容 API 地址）').fill('http://127.0.0.1:18002/v1')
+  await page.getByLabel('Model ID（模型标识）').fill('fixture-model')
+  await page.getByRole('button', { name: /保存模型/ }).click()
+  const form = page.locator('.quick-generation-form')
+  await form.locator('input[type=file]').setInputFiles({ name: 'quick.txt', mimeType: 'text/plain', buffer: Buffer.from(source) })
+  await form.getByLabel('Collection Name（集合名称）').fill('Quick E2E Sources')
+  await form.getByLabel('Question Count（题目数量）').fill('1')
+  await form.getByRole('button', { name: /上传并生成/ }).click()
+  await expect(page.locator('.generation-candidate')).toContainText('When did Acme launch?', { timeout: 30_000 })
+  await expect(page.locator('.generation-evidence')).toContainText(source)
+  const questions = page.getByRole('region', { name: /集合问题/ })
+  await expect(questions).toContainText('When did Acme launch?')
+  await expect(questions).toContainText(source)
+  const collectionResponse = await request.get('/api/v1/document-collections')
+  const collections = await collectionResponse.json() as Array<{ id: string; name: string }>
+  const collection = collections.find((item) => item.name === 'Quick E2E Sources')!
+  const questionsResponse = await request.get(`/api/v1/document-collections/${collection.id}/questions`)
+  expect(questionsResponse.ok()).toBeTruthy()
+  const saved = await questionsResponse.json() as Array<{ source_document_id: string; reference_chunks: Array<{ text: string }> }>
+  expect(saved).toHaveLength(1)
+  expect(saved[0].source_document_id).toBe('quick-1')
+  expect(saved[0].reference_chunks[0].text).toBe(source)
 })

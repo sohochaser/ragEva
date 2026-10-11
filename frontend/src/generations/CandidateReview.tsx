@@ -137,7 +137,10 @@ export function CandidateReview({ candidate, onUpdated }: {
   }
 
   const selected = positions.map((position) => collection?.chunks.find((chunk) => chunk.position === position))
-  const available = collection?.chunks.filter((chunk) => !positions.includes(chunk.position)) ?? []
+  const selectedDocumentId = selected.find((chunk) => chunk)?.document_id
+  const available = collection?.chunks.filter((chunk) =>
+    !positions.includes(chunk.position) && (!selectedDocumentId || chunk.document_id === selectedDocumentId)
+  ) ?? []
 
   return <div className="candidate-review">
     <div className="candidate-review-toolbar"><span className={`review-status review-status-${candidate.status}`}>{statusLabels[candidate.status] ?? candidate.status}</span>

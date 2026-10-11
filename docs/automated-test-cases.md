@@ -42,6 +42,7 @@
 | --- | --- | --- | --- | --- |
 | AT-15 系统文案双语 | US-028 | 逐一打开八页，操作窄屏菜单、上传/导入弹窗、图标按钮，触发加载、空态与错误；提供中文文档名、问题和模型回答 | 系统自有可见文本、`title` 与可访问名称采用 `English（中文）`；英文和中文语义相同；用户内容及技术标识原样显示；320px 无整体溢出 | [导航与状态组件](../frontend/src/App.test.tsx)、[页面组件测试](../frontend/src/documents/DocumentCollectionPage.test.tsx)、[八页导航与宽度](../frontend/e2e/navigation.spec.ts)、[表单与弹窗](../frontend/e2e/surfaces.spec.ts)、[业务闭环](../frontend/e2e/critical-path.spec.ts) |
 | AT-16 数值单位与大小 | US-029 | 上传时输入切块 1000、重叠 100，查看精确文件字节数；检查目标超时 30 秒、耗时 20 毫秒、token 用量、30% 比例、0.8 阈值及缺失值 | 每个输入/读数旁有正确双语单位或无单位范围；相似度为 -1 至 1、评分为 0 至 1；原始提交值分别仍为 1000、100、30、0.3、0.8；未知不写成 0；窄屏不截断标签 | [文档上传与字节数](../frontend/src/documents/DocumentCollectionPage.test.tsx)、[生成比例](../frontend/src/generations/GenerationPage.test.tsx)、[目标秒数](../frontend/src/targets/TargetPage.test.tsx)、[匹配阈值](../frontend/src/predictions/MatchingPreview.test.tsx)、[运行耗时与评分](../frontend/src/runs/RunPage.test.tsx)、[用量缺失值](../frontend/src/usage/UsagePanel.test.tsx)、[窄屏与跨页](../frontend/e2e/surfaces.spec.ts) |
+| AT-19 上传文档生成单文档问答 | US-032 | 在候选生成页上传多个文档，选择模型和题数，查看按集合归属的候选；注入跨文档/伪造引用与任务启动失败 | 上传后可直接生成，问题、答案和原文片段均归属同一文档；错误响应不留下候选；启动失败可对已保存集合重试 | [生成与查询](../backend/tests/test_generations.py)、[生成页面](../frontend/src/generations/GenerationPage.test.tsx)、[浏览器闭环](../frontend/e2e/critical-path.spec.ts) |
 
 ## 几个容易误读的结果
 

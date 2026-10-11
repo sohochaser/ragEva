@@ -38,9 +38,9 @@ from backend.worker.queue import generate_candidates_task
 class GenerationCreate(BaseModel):
     model_id: str = Field(min_length=1)
     target_count: int = Field(ge=1, le=1000)
-    multi_chunk_ratio: float = Field(ge=0, le=1, allow_inf_nan=False)
-    language: str = Field(min_length=1, max_length=80)
-    question_type: str = Field(min_length=1, max_length=80)
+    multi_chunk_ratio: float = Field(default=0, ge=0, le=1, allow_inf_nan=False)
+    language: str = Field(default="中文", min_length=1, max_length=80)
+    question_type: str = Field(default="事实问答", min_length=1, max_length=80)
     instructions: str = Field(default="", max_length=2000)
     max_calls: int | None = Field(default=None, ge=1, le=3000)
     max_concurrency: int = Field(default=4, ge=1, le=4)
@@ -83,6 +83,7 @@ class GeneratedCandidate(BaseModel):
     id: str
     run_id: str
     collection_id: str
+    source_document_id: str | None = None
     revision: int
     slot_index: int
     question: str
@@ -261,6 +262,16 @@ def create_generation_router(settings: Settings) -> APIRouter:
             return store.candidates(run_id)
         except GenerationNotFound as exc:
             raise HTTPException(status_code=404, detail="生成任务不存在") from exc
+
+    @router.get(
+        "/api/v1/document-collections/{collection_id}/questions",
+        response_model=list[GeneratedCandidate],
+    )
+    def collection_questions(collection_id: str) -> list[dict[str, Any]]:
+        try:
+            return store.collection_candidates(collection_id)
+        except CollectionNotFound as exc:
+            raise HTTPException(status_code=404, detail="文档集合不存在") from exc
 
     @router.get("/api/v1/generations/{run_id}/usage", response_model=UsageSummary)
     def get_usage(run_id: str) -> dict[str, Any]:

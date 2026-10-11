@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-PROMPT_VERSION = "candidate-generation-v1"
+PROMPT_VERSION = "candidate-generation-v2"
 
 
 @dataclass(frozen=True)
@@ -32,22 +32,33 @@ def plan_slots(
     ]
     if not ordered:
         return [], target_multi_count
+    multi_documents = [chunks for chunks in by_document.values() if len(chunks) >= 2]
+    multi_sources = [
+        (document_chunks[index], document_chunks[(index + 1) % len(document_chunks)])
+        for index in range(max(map(len, multi_documents), default=0))
+        for document_chunks in multi_documents
+        if index < len(document_chunks)
+    ]
     slots: list[GenerationSlot] = []
     unavailable_multi = 0
     for index in range(target_count):
         multi = index < target_multi_count
-        if multi and len(ordered) < 2:
-            unavailable_multi += 1
-            continue
-        width = 2 if multi else 1
-        start = index % len(ordered)
-        sources = tuple(ordered[(start + offset) % len(ordered)] for offset in range(width))
+        if multi:
+            if not multi_sources:
+                unavailable_multi += 1
+                continue
+            sources: tuple[dict[str, Any], ...] = multi_sources[index % len(multi_sources)]
+        else:
+            sources = (ordered[index % len(ordered)],)
         slots.append(GenerationSlot(index, multi, sources))
     return slots, unavailable_multi
 
 
 def reference_chunks(
-    positions: tuple[int, ...], sources: tuple[dict[str, Any], ...], multi_chunk: bool
+    positions: tuple[int, ...],
+    sources: tuple[dict[str, Any], ...],
+    multi_chunk: bool,
+    passages: tuple[str, ...] | None = None,
 ) -> list[dict[str, str]]:
     source_by_position = {source["position"]: source for source in sources}
     if not positions or len(set(positions)) != len(positions):
@@ -56,10 +67,21 @@ def reference_chunks(
         raise ValueError("insufficient_multi_chunk_support")
     if any(position not in source_by_position for position in positions):
         raise ValueError("unknown_support_position")
+    if len({source_by_position[position]["document_id"] for position in positions}) != 1:
+        raise ValueError("cross_document_support")
+    if passages is not None and len(passages) != len(positions):
+        raise ValueError("invalid_support_passages")
+    if passages is not None and any(
+        not passage.strip() or passage not in source_by_position[position]["text"]
+        for position, passage in zip(positions, passages, strict=True)
+    ):
+        raise ValueError("unsupported_passage")
     return [
         {
             "document_id": source_by_position[position]["document_id"],
-            "text": source_by_position[position]["text"],
+            "text": passages[index]
+            if passages is not None
+            else source_by_position[position]["text"],
         }
-        for position in positions
+        for index, position in enumerate(positions)
     ]

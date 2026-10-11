@@ -29,6 +29,7 @@ async def completion(request: Request) -> dict[str, object]:
             "question": question,
             "reference_answer": "2018",
             "support_positions": [item["position"] for item in prompt["sources"]],
+            "support_passages": [item["text"] for item in prompt["sources"]],
         }
     else:
         result = {"score": 1.0, "reason": "The answer matches the supplied evidence."}

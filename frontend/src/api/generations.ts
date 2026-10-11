@@ -34,6 +34,7 @@ async function readJson<T>(pending: Promise<Response>): Promise<T> {
 export const fetchGenerations = () => readJson<GenerationRun[]>(fetch('/api/v1/generations'))
 export const fetchGeneration = (id: string) => readJson<GenerationRun>(fetch(`/api/v1/generations/${encodeURIComponent(id)}`))
 export const fetchCandidates = (id: string) => readJson<GeneratedCandidate[]>(fetch(`/api/v1/generations/${encodeURIComponent(id)}/candidates`))
+export const fetchCollectionQuestions = (id: string) => readJson<GeneratedCandidate[]>(fetch(`/api/v1/document-collections/${encodeURIComponent(id)}/questions`))
 export const fetchCandidate = (id: string) => readJson<GeneratedCandidate>(fetch(`/api/v1/candidates/${encodeURIComponent(id)}`))
 export const fetchCandidateRevisions = (id: string) => readJson<CandidateRevision[]>(fetch(`/api/v1/candidates/${encodeURIComponent(id)}/revisions`))
 export const fetchDuplicateCheck = (id: string) => readJson<DuplicateCheck | null>(fetch(`/api/v1/candidates/${encodeURIComponent(id)}/duplicate-check`))

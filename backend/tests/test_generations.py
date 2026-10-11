@@ -70,9 +70,17 @@ def test_source_allocation_covers_documents_and_preserves_relevance_order() -> N
     slots, unavailable = plan_slots(chunks, 2, 1)
     assert unavailable == 0
     assert [slot.sources[0]["position"] for slot in slots] == [0, 2]
-    assert reference_chunks((2, 0), slots[0].sources, True) == [
-        {"document_id": "doc-b", "text": "fact 2"},
+    assert reference_chunks((1, 0), slots[0].sources, True, ("fact 1", "fact 0")) == [
+        {"document_id": "doc-a", "text": "fact 1"},
         {"document_id": "doc-a", "text": "fact 0"},
+    ]
+    with pytest.raises(ValueError, match="cross_document_support"):
+        reference_chunks((0, 2), (chunks[0], chunks[2]), True)
+    with pytest.raises(ValueError, match="unsupported_passage"):
+        reference_chunks((0,), (chunks[0],), False, ("invented",))
+    excerpt = {"position": 5, "document_id": "doc-c", "text": "Founded in 2018 in Shanghai."}
+    assert reference_chunks((5,), (excerpt,), False, ("2018 in Shanghai",)) == [
+        {"document_id": "doc-c", "text": "2018 in Shanghai"}
     ]
 
 
@@ -110,6 +118,9 @@ def test_quota_sources_prompt_snapshot_and_candidates(
                                     "question": f"Question {positions[0]}",
                                     "reference_answer": "Grounded answer",
                                     "support_positions": positions,
+                                    "support_passages": [
+                                        item["text"] for item in prompt["sources"]
+                                    ],
                                 }
                             )
                         }
@@ -136,8 +147,14 @@ def test_quota_sources_prompt_snapshot_and_candidates(
     assert [len(item["reference_chunks"]) for item in candidates] == [2, 2, 1]
     assert candidates[0]["reference_chunks"] == [
         {"document_id": "doc-a", "text": "fact 0"},
-        {"document_id": "doc-b", "text": "fact 2"},
+        {"document_id": "doc-a", "text": "fact 1"},
     ]
+    assert all(item["source_document_id"] is not None for item in candidates)
+    collection_questions = api.get(f"/api/v1/document-collections/{run['collection_id']}/questions")
+    assert collection_questions.status_code == 200
+    assert {item["id"] for item in collection_questions.json()} == {
+        item["id"] for item in candidates
+    }
     assert all(item["status"] == "pending_review" for item in candidates)
     assert sorted(item["required_support_chunks"] for item in seen) == [1, 2, 2]
     assert max(item["sources"][0]["position"] for item in seen) >= 2
@@ -169,6 +186,7 @@ def test_multi_chunk_shortage_preserves_single_candidates(
                                     "question": "What fact?",
                                     "reference_answer": "fact 0",
                                     "support_positions": [prompt["sources"][0]["position"]],
+                                    "support_passages": [prompt["sources"][0]["text"]],
                                 }
                             )
                         }
@@ -216,6 +234,7 @@ def test_bad_model_output_stops_at_call_limit_and_keeps_errors(
                                     "question": "Q",
                                     "reference_answer": "A",
                                     "support_positions": [0],
+                                    "support_passages": ["fact 0"],
                                 }
                             )
                         }
@@ -287,3 +306,4 @@ def test_generation_api_rejects_invalid_inputs_and_missing_dependencies(
     )
     assert api.get("/api/v1/generations/missing").status_code == 404
     assert api.get("/api/v1/generations/missing/candidates").status_code == 404
+    assert api.get("/api/v1/document-collections/missing/questions").status_code == 404

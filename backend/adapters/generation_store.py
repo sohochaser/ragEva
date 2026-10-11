@@ -230,7 +230,9 @@ class GenerationStore(DocumentStore):
                 ),
             )
             if case is not None:
-                chunks = reference_chunks(case.support_positions, slot.sources, slot.multi_chunk)
+                chunks = reference_chunks(
+                    case.support_positions, slot.sources, slot.multi_chunk, case.support_passages
+                )
                 candidate_id = str(uuid4())
                 created_at = datetime.now(UTC).isoformat()
                 chunks_json = json.dumps(chunks, ensure_ascii=False)
@@ -314,12 +316,24 @@ class GenerationStore(DocumentStore):
             ).fetchall()
         return [self._candidate(row) for row in rows]
 
+    def collection_candidates(self, collection_id: str) -> list[dict[str, Any]]:
+        self.get_collection(collection_id)
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                CANDIDATE_SELECT
+                + " WHERE r.collection_id = ? ORDER BY c.created_at DESC, c.id DESC",
+                (collection_id,),
+            ).fetchall()
+        return [self._candidate(row) for row in rows]
+
     @staticmethod
     def _candidate(row: sqlite3.Row) -> dict[str, Any]:
         item = dict(row)
         item["reference_chunks"] = json.loads(item.pop("reference_chunks_json"))
         item["support_positions"] = json.loads(item.pop("support_positions_json"))
         item["multi_chunk"] = bool(item["multi_chunk"])
+        document_ids = {chunk["document_id"] for chunk in item["reference_chunks"]}
+        item["source_document_id"] = next(iter(document_ids)) if len(document_ids) == 1 else None
         return item
 
     def get_candidate(self, candidate_id: str) -> dict[str, Any]:
@@ -394,6 +408,8 @@ class GenerationStore(DocumentStore):
                 collection_id=collection_id,
                 source_collection_id=candidate["collection_id"],
                 collection_chunks=source["chunks"],
+                current_positions=candidate["support_positions"],
+                current_chunks=candidate["reference_chunks"],
                 action=action,
             )
             if issues:

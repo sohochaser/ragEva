@@ -22,6 +22,7 @@ class GeneratedCase:
     reference_answer: str
     support_positions: tuple[int, ...]
     usage: dict[str, int] | None
+    support_passages: tuple[str, ...] | None = None
 
 
 SYSTEM_PROMPT = (
@@ -30,6 +31,14 @@ SYSTEM_PROMPT = (
     "Use only the provided source chunks. Every listed chunk must be necessary to answer. "
     "Order support_positions from most to least relevant to the question. "
     "Do not invent facts or cite positions outside the provided sources."
+)
+PASSAGE_PROMPT = (
+    "Generate one grounded single-turn RAG evaluation case from one document only. "
+    "Return only a JSON object with question, reference_answer, support_positions, "
+    "and support_passages. The two arrays must have the same order and length. "
+    "Each support_passages item must be a nonempty verbatim continuous excerpt from "
+    "the corresponding source text that supports the answer. Cite only provided positions. "
+    "Order sources from most to least relevant. Do not invent facts or combine documents."
 )
 
 
@@ -44,6 +53,7 @@ def generate_case(
     question_type: str,
     instructions: str,
     on_call: CallObserver | None = None,
+    require_passages: bool = True,
 ) -> GeneratedCase:
     source_payload = [
         {"position": item["position"], "document_id": item["document_id"], "text": item["text"]}
@@ -61,7 +71,7 @@ def generate_case(
     )
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": PASSAGE_PROMPT if require_passages else SYSTEM_PROMPT},
         {"role": "user", "content": user_prompt},
     ]
     content: str | None = None
@@ -108,15 +118,15 @@ def generate_case(
             result = json.loads(content)
         except (ValueError, KeyError, IndexError, TypeError) as exc:
             raise GenerationModelError("invalid_model_response") from exc
-        if not isinstance(result, dict) or set(result) != {
-            "question",
-            "reference_answer",
-            "support_positions",
-        }:
+        expected_fields = {"question", "reference_answer", "support_positions"}
+        if require_passages:
+            expected_fields.add("support_passages")
+        if not isinstance(result, dict) or set(result) != expected_fields:
             raise GenerationModelError("invalid_candidate_shape")
         question = result["question"]
         answer = result["reference_answer"]
         positions = result["support_positions"]
+        passages = result.get("support_passages")
         if (
             not isinstance(question, str)
             or not question.strip()
@@ -130,7 +140,16 @@ def generate_case(
             or len(set(positions)) != len(positions)
         ):
             raise GenerationModelError("invalid_candidate_fields")
-        return GeneratedCase(question.strip(), answer.strip(), tuple(positions), parsed_usage)
+        if require_passages and (
+            not isinstance(passages, list)
+            or len(passages) != len(positions)
+            or any(not isinstance(item, str) or not item.strip() for item in passages)
+        ):
+            raise GenerationModelError("invalid_support_passages")
+        quoted = tuple(passages) if isinstance(passages, list) else None
+        return GeneratedCase(
+            question.strip(), answer.strip(), tuple(positions), parsed_usage, quoted
+        )
     finally:
         if on_call is not None:
             on_call(messages, content if isinstance(content, str) else None, parsed_usage)

@@ -1127,6 +1127,17 @@
             "title": "Slot Index",
             "type": "integer"
           },
+          "source_document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Document Id"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -1167,6 +1178,7 @@
             "type": "string"
           },
           "language": {
+            "default": "中文",
             "maxLength": 80,
             "minLength": 1,
             "title": "Language",
@@ -1198,12 +1210,14 @@
             "type": "string"
           },
           "multi_chunk_ratio": {
+            "default": 0,
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Multi Chunk Ratio",
             "type": "number"
           },
           "question_type": {
+            "default": "事实问答",
             "maxLength": 80,
             "minLength": 1,
             "title": "Question Type",
@@ -1218,10 +1232,7 @@
         },
         "required": [
           "model_id",
-          "target_count",
-          "multi_chunk_ratio",
-          "language",
-          "question_type"
+          "target_count"
         ],
         "title": "GenerationCreate",
         "type": "object"
@@ -5016,6 +5027,52 @@
           }
         },
         "summary": "Create",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/api/v1/document-collections/{collection_id}/questions": {
+      "get": {
+        "operationId": "collection_questions_api_v1_document_collections__collection_id__questions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GeneratedCandidate"
+                  },
+                  "title": "Response Collection Questions Api V1 Document Collections  Collection Id  Questions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Collection Questions",
         "tags": [
           "generations"
         ]

@@ -12,7 +12,7 @@ from backend.domain.chunk_manifests import ManifestChunk
 from backend.domain.generation import GenerationSlot
 
 
-def setup_candidate(tmp_path: Path) -> tuple[TestClient, str, str]:
+def setup_candidate(tmp_path: Path, *, excerpt: bool = False) -> tuple[TestClient, str, str]:
     collection = DocumentStore(tmp_path).create_from_chunks(
         "source",
         [
@@ -27,7 +27,9 @@ def setup_candidate(tmp_path: Path) -> tuple[TestClient, str, str]:
     store.record(
         run["id"],
         GenerationSlot(0, False, (collection["chunks"][0],)),
-        GeneratedCase("Original question", "Original answer", (0,), None),
+        GeneratedCase(
+            "Original question", "Original answer", (0,), None, ("first",) if excerpt else None
+        ),
         None,
     )
     store.finish(run["id"])
@@ -41,7 +43,7 @@ def payload(collection_id: str, **changes: object) -> dict[str, object]:
         "collection_id": collection_id,
         "question": "Revised question",
         "reference_answer": "Revised answer",
-        "support_positions": [2, 0],
+        "support_positions": [1, 0],
         "action": "save",
     }
     result.update(changes)
@@ -61,9 +63,9 @@ def test_edit_reorder_approve_and_revision_history(tmp_path: Path) -> None:
     candidate = edited.json()
     assert candidate["revision"] == 1
     assert candidate["status"] == "pending_review"
-    assert candidate["support_positions"] == [2, 0]
+    assert candidate["support_positions"] == [1, 0]
     assert candidate["reference_chunks"] == [
-        {"document_id": "doc-b", "text": "third fact"},
+        {"document_id": "doc-a", "text": "second fact"},
         {"document_id": "doc-a", "text": "first fact"},
     ]
 
@@ -93,6 +95,7 @@ def test_invalid_sources_and_direct_text_edits_do_not_change_candidate(tmp_path:
         (payload(other["id"]), "collection_id"),
         (payload(collection_id, support_positions=[0, 99]), "support_positions"),
         (payload(collection_id, support_positions=[0, 0]), "support_positions"),
+        (payload(collection_id, support_positions=[0, 2]), "support_positions"),
     ]
     for body, field in cases:
         response = api.patch(path, json=body)
@@ -163,4 +166,15 @@ def test_existing_candidate_without_revision_rows_keeps_original_snapshot(tmp_pa
     assert [item["question"] for item in api.get(path + "/revisions").json()] == [
         "Original question",
         "Revised question",
+    ]
+
+
+def test_review_preserves_verbatim_source_excerpt(tmp_path: Path) -> None:
+    api, collection_id, candidate_id = setup_candidate(tmp_path, excerpt=True)
+    path = f"/api/v1/candidates/{candidate_id}"
+    saved = api.patch(path, json=payload(collection_id, support_positions=[0, 1]))
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["reference_chunks"] == [
+        {"document_id": "doc-a", "text": "first"},
+        {"document_id": "doc-a", "text": "second fact"},
     ]

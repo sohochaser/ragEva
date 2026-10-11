@@ -262,6 +262,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/document-collections/{collection_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Collection Questions */
+        get: operations["collection_questions_api_v1_document_collections__collection_id__questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/generations": {
         parameters: {
             query?: never;
@@ -1188,6 +1205,8 @@ export interface components {
             run_id: string;
             /** Slot Index */
             slot_index: number;
+            /** Source Document Id */
+            source_document_id?: string | null;
             /** Status */
             status: string;
             /** Support Positions */
@@ -1200,7 +1219,10 @@ export interface components {
              * @default
              */
             instructions: string;
-            /** Language */
+            /**
+             * Language
+             * @default 中文
+             */
             language: string;
             /** Max Calls */
             max_calls?: number | null;
@@ -1211,9 +1233,15 @@ export interface components {
             max_concurrency: number;
             /** Model Id */
             model_id: string;
-            /** Multi Chunk Ratio */
+            /**
+             * Multi Chunk Ratio
+             * @default 0
+             */
             multi_chunk_ratio: number;
-            /** Question Type */
+            /**
+             * Question Type
+             * @default 事实问答
+             */
             question_type: string;
             /** Target Count */
             target_count: number;
@@ -2736,6 +2764,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GenerationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    collection_questions_api_v1_document_collections__collection_id__questions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedCandidate"][];
                 };
             };
             /** @description Validation Error */

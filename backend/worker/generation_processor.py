@@ -16,7 +16,7 @@ from backend.adapters.generation_store import GenerationStore
 from backend.adapters.model_store import OnlineModelNotFound, OnlineModelStore
 from backend.adapters.trace_store import TraceStore
 from backend.adapters.usage_store import UsageStore
-from backend.domain.generation import GenerationSlot, plan_slots, reference_chunks
+from backend.domain.generation import PROMPT_VERSION, GenerationSlot, plan_slots, reference_chunks
 from backend.domain.model_usage import model_call_usage
 from backend.tracing import attributes, business_span, fail
 
@@ -89,6 +89,7 @@ def process_generation(
                         config["question_type"],
                         config["instructions"],
                         partial(record_generation_call, slot_index=slot.index),
+                        require_passages=config.get("prompt_version") == PROMPT_VERSION,
                     )
                     attributes(span, **{"status": "success"})
                     return result
@@ -112,7 +113,12 @@ def process_generation(
                     error = None
                     try:
                         case = future.result()
-                        reference_chunks(case.support_positions, slot.sources, slot.multi_chunk)
+                        reference_chunks(
+                            case.support_positions,
+                            slot.sources,
+                            slot.multi_chunk,
+                            case.support_passages,
+                        )
                     except (GenerationModelError, ValueError) as exc:
                         error = str(exc)
                     except Exception:
