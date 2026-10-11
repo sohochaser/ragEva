@@ -480,7 +480,9 @@ class GenerationStore(DocumentStore):
         self, connection: sqlite3.Connection, candidate: dict[str, Any]
     ) -> list[dict[str, Any]]:
         rows = connection.execute(
-            CANDIDATE_SELECT + " WHERE r.collection_id = ? AND c.id != ? "
+            CANDIDATE_SELECT + " JOIN document_collections source ON source.id = r.collection_id "
+            "WHERE source.group_id = (SELECT group_id FROM document_collections WHERE id = ?) "
+            "AND c.id != ? "
             "ORDER BY c.created_at, c.id",
             (candidate["collection_id"], candidate["id"]),
         ).fetchall()
@@ -490,7 +492,10 @@ class GenerationStore(DocumentStore):
         ]
         current_candidates = {other["id"]: other for other in others}
         published = connection.execute(
-            "SELECT * FROM published_candidate_cases WHERE collection_id = ? ORDER BY rowid",
+            "SELECT p.* FROM published_candidate_cases p "
+            "JOIN document_collections source ON source.id = p.collection_id "
+            "WHERE source.group_id = (SELECT group_id FROM document_collections WHERE id = ?) "
+            "ORDER BY p.rowid",
             (candidate["collection_id"],),
         ).fetchall()
         seen_published: set[tuple[str, str, str, str]] = set()

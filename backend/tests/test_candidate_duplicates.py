@@ -74,6 +74,18 @@ def test_generated_paraphrase_is_definite_duplicate_across_runs(tmp_path: Path) 
     )
 
 
+def test_duplicates_span_snapshots_of_one_logical_collection(tmp_path: Path) -> None:
+    store, api, collection_id = setup(tmp_path)
+    first = create_candidate(store, collection_id, "What year did Acme launch?", "2018")
+    later = DocumentStore(tmp_path).save_chunks(
+        "source", [ManifestChunk(0, "doc-b", "Other source")]
+    )
+    second = create_candidate(store, later["id"], "When was Acme launched?", "2018")
+    check = api.get(f"/api/v1/candidates/{second}/duplicate-check").json()
+    assert check["verdict"] == "duplicate"
+    assert check["matches"][0]["source_id"] == first
+
+
 def test_suspected_release_is_audited_and_revision_bound(tmp_path: Path) -> None:
     store, api, collection_id = setup(tmp_path)
     create_candidate(store, collection_id, "What year did Acme launch?", "2018")

@@ -1,10 +1,10 @@
 # 自动化测试案例说明
 
-本文面向使用 ragEva 的人，说明当前自动化测试验证了什么、怎样判断结果，以及哪些结论不能从测试推出。案例索引覆盖 MVP、1.1 界面及 US-030 在线模型维护；测试代码是具体输入和断言的最终依据，[用户故事](stories.md)记录功能的验收目标。
+本文面向使用 ragEva 的人，说明当前自动化测试验证了什么、怎样判断结果，以及哪些结论不能从测试推出。案例索引覆盖 MVP、1.1 界面、US-030 在线模型维护及 US-031 文档集合追加；测试代码是具体输入和断言的最终依据，[用户故事](stories.md)记录功能的验收目标。
 
 ## 先看测试结果
 
-统一检查命令为 `make check`。US-030 的完整检查包含后端 pytest 127 项、前端 Vitest 33 项、浏览器 Playwright 10 项；[千题容量记录](performance.md)另记录了 1,000 题测试通过。这里的数量是测试项数，不是功能覆盖率或线上成功率。
+统一检查命令为 `make check`。US-031 的完整检查包含后端 pytest 135 项、前端 Vitest 34 项、浏览器 Playwright 11 项；[千题容量记录](performance.md)另记录了 1,000 题测试通过。这里的数量是测试项数，不是功能覆盖率或线上成功率。
 
 | 检查层 | 主要验证内容 | 失败时先看什么 |
 | --- | --- | --- |
@@ -36,19 +36,14 @@
 | AT-13 千题、故障与恢复 | US-023 | 1,000 个混合样本注入目标 429/超时和评分超时；中断后重排、重复消息及取消 | 并发不超上限；所有题有终态；有效分母、导出行数和 `case_id` 唯一性正确；已保存评分不会重算 | [容量](../backend/tests/test_scale.py)、[恢复](../backend/tests/test_recovery.py) |
 | AT-14 浏览器关键路径 | 跨 US-013 至 US-023 | 在真实浏览器完成上传、下载、生成、审核发布、目标采集、预测导入、评分、导出和复评 | 页面与服务之间的关键流程连通，并呈现候选不足额、疑似重复放行等状态 | [Playwright 用例](../frontend/e2e/critical-path.spec.ts) |
 
-以下为已落地的 1.1 界面和在线模型维护自动化案例。
+以下为已落地的 1.1 界面、在线模型维护和集合追加自动化案例。
 
 | 案例 | 对应故事 | 用户操作或测试输入 | 通过时应看到什么 | 拟落地的测试 |
 | --- | --- | --- | --- | --- |
 | AT-15 系统文案双语 | US-028 | 逐一打开八页，操作窄屏菜单、上传/导入弹窗、图标按钮，触发加载、空态与错误；提供中文文档名、问题和模型回答 | 系统自有可见文本、`title` 与可访问名称采用 `English（中文）`；英文和中文语义相同；用户内容及技术标识原样显示；320px 无整体溢出 | [导航与状态组件](../frontend/src/App.test.tsx)、[页面组件测试](../frontend/src/documents/DocumentCollectionPage.test.tsx)、[八页导航与宽度](../frontend/e2e/navigation.spec.ts)、[表单与弹窗](../frontend/e2e/surfaces.spec.ts)、[业务闭环](../frontend/e2e/critical-path.spec.ts) |
 | AT-16 数值单位与大小 | US-029 | 上传时输入切块 1000、重叠 100，查看精确文件字节数；检查目标超时 30 秒、耗时 20 毫秒、token 用量、30% 比例、0.8 阈值及缺失值 | 每个输入/读数旁有正确双语单位或无单位范围；相似度为 -1 至 1、评分为 0 至 1；原始提交值分别仍为 1000、100、30、0.3、0.8；未知不写成 0；窄屏不截断标签 | [文档上传与字节数](../frontend/src/documents/DocumentCollectionPage.test.tsx)、[生成比例](../frontend/src/generations/GenerationPage.test.tsx)、[目标秒数](../frontend/src/targets/TargetPage.test.tsx)、[匹配阈值](../frontend/src/predictions/MatchingPreview.test.tsx)、[运行耗时与评分](../frontend/src/runs/RunPage.test.tsx)、[用量缺失值](../frontend/src/usage/UsagePanel.test.tsx)、[窄屏与跨页](../frontend/e2e/surfaces.spec.ts) |
 | AT-17 在线模型校验和维护 | US-030 | 使用有效或错误的 URL/模型标识/Token 新增与编辑；保留、替换、清除凭据；删除空闲模型和尝试删除在途任务模型 | 校验请求使用 JSON 模式并检查实际响应；失败不落库或泄漏 Token；编辑与删除更新可选列表和密钥，运行中冲突被拒绝，历史快照不变 | [模型 API 与存储](../backend/tests/test_online_models.py)、[生成模型界面](../frontend/src/generations/GenerationPage.test.tsx)、[浏览器关键路径](../frontend/e2e/critical-path.spec.ts) |
-
-### 待实现案例
-
-| 案例 | 对应故事 | 用户操作或测试输入 | 通过时应看到什么 | 计划测试层 |
-| --- | --- | --- | --- | --- |
-| AT-18 集合名称选择与追加 | US-031 | 两种导入入口分别输入唯一匹配、部分匹配、新名称和已有同名历史名称；选择已有集合并追加原文或 chunk；注入重复 ID、类型冲突、过期快照和并发创建 | 完整匹配归入正确集合，部分匹配不误归类；新名创建首版；追加产生新快照且旧清单、原文、候选及数据集引用不变；失败整批回滚；双语组合框在键盘和窄屏下可用 | 后端 API/存储/下载与生成集成测试，前端组件测试，Playwright 创建与追加闭环 |
+| AT-18 集合名称选择与追加 | US-031 | 两种导入入口分别输入匹配名称和新名称；选择已有集合并追加原文或 chunk；注入重复 ID、类型冲突、过期快照和旧版同名数据 | 完整匹配归入正确集合；新名创建首版；追加产生新快照且旧清单、原文和生成任务来源不变；失败整批回滚；组合框在键盘和窄屏下可用 | [原文集合与迁移](../backend/tests/test_document_collections.py)、[chunk 清单](../backend/tests/test_chunk_manifests.py)、[跨快照查重](../backend/tests/test_candidate_duplicates.py)、[前端组件](../frontend/src/documents/DocumentCollectionPage.test.tsx)、[浏览器闭环](../frontend/e2e/collection-selection.spec.ts) |
 
 ## 几个容易误读的结果
 

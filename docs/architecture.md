@@ -28,7 +28,7 @@ US-009 扩展目标协议为 SSE：`backend/adapters/sse_target.py` 使用 `http
 
 文档集合使用 `backend/domain/document_collections.py` 校验 TXT/Markdown、ID 与切块参数，`backend/adapters/document_store.py` 在一个 SQLite 事务中保存原始 BLOB、SHA-256 与有序切块。CSV/JSONL chunk 清单由 `backend/domain/chunk_manifests.py` 校验全局顺序、文档 ID、正文与重复项，同样原子保存。集合以 `source_kind` 区分 `original_files` 和 `chunks_only`；后者没有文件名、校验值、原始字节或下载 URL。管理 API 提供创建、清单导入、列表和详情，详情的 `chunks` 保留可供后续生成流程使用的全局顺序。`backend/download/` 作为独立 ASGI 进程读取同一业务库，只开放专用 Token 保护的清单和原文字节路由。
 
-US-031 待实现：在现有不可变集合快照之上增加稳定的逻辑集合身份和当前快照指针。名称检索、规范化唯一性和来源类型校验由管理 API/存储层执行；可输入下拉框只负责呈现候选与提交选中的集合 ID，不能把前端匹配当作并发控制。新建写入首个快照；追加在单个事务内检查预期当前快照、沿用原文切块配置、校验新旧 `document_id` 不冲突，并写入包含既有内容与新增内容的新快照，再推进当前指针。已有快照 ID 与文件下载地址保持可读；生成任务、候选和数据集来源继续固定引用快照 ID。旧版同名记录迁移时保留各自快照身份，遇到多项匹配要求用户显式选择。实现前需扩展 OpenAPI 及前端生成类型，并用契约/数据库/浏览器测试验证创建、追加、冲突和旧快照不变；详见 [US-031](stories.md#us-031-文档集合名称选择与追加依赖us-013us-015us-016)。
+US-031 已实现：`collection_groups` 保存稳定的逻辑集合身份和当前快照指针，`document_collections` 保留每次导入的不可变快照 ID 与版本。旧数据库连接时迁移已有集合记录，原有 ID 仍可读取。管理 API 按去空白与 Unicode 大小写折叠后的完整名称匹配，旧版同名记录须显式选择 `group_id`；原文和 chunk-only 类型不能混用。追加在事务中核对预期版本、切块配置和 `document_id`，复制旧内容、写入新增内容并推进当前指针；下载、生成和已发布数据集仍引用原快照 ID。`GET /api/v1/document-collections/{id}/versions` 提供版本列表；列表只返回每个逻辑集合的最新快照。跨快照候选查重按逻辑集合身份查询。前端两个导入弹窗共用可输入下拉框，提交 `group_id` 与预期版本；OpenAPI 与生成类型已同步，详见 [US-031](stories.md#us-031-文档集合名称选择与追加依赖us-013us-015us-016)。
 
 US-014 的 `backend/adapters/document_text.py` 使用 python-docx 提取 DOCX 的正文和表格文本，使用 pypdf 提取文本 PDF 的页面内容。提取出的文本交给同一切块校验流程；扫描版和受保护 PDF、损坏文件以文件级错误拒绝，原始 BLOB 与校验值保持上传时的内容。原文下载仍由 US-016 接入。
 
