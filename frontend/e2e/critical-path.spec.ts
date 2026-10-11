@@ -60,6 +60,7 @@ test('document, generation, target, file and answer run paths', async ({ page, r
   await secondCandidate.getByRole('button', { name: /审核/ }).click()
   await secondCandidate.getByRole('button', { name: /批准/ }).click()
   await expect(secondCandidate.locator('.duplicate-verdict')).toContainText('Suspected Duplicate（疑似重复） · Awaiting Decision（待确认）')
+  await expect(secondCandidate.getByRole('button', { name: /重新查重/ })).toBeEnabled()
   await secondCandidate.getByLabel('Reason for Duplicate Override（非重复放行理由）').fill('Different wording tests a distinct question.')
   await secondCandidate.getByRole('button', { name: /确认放行/ }).click()
   await expect(secondCandidate.locator('.duplicate-verdict')).toContainText('Suspected Duplicate（疑似重复） · Override Approved（已放行）')

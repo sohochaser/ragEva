@@ -101,10 +101,10 @@ export function CandidateReview({ candidate, onUpdated }: {
         action,
       })
       onUpdated(updated)
+      setAllowReason('')
       setHistory(await fetchCandidateRevisions(candidate.id))
       setDuplicate(await fetchDuplicateCheck(candidate.id))
       setDuplicateHistory(await fetchDuplicateHistory(candidate.id))
-      setAllowReason('')
     } catch (cause) {
       if (cause instanceof CandidateReviewError) setIssues(cause.issues)
       else setError(uiError(cause, 'Candidate review failed', '候选审核失败'))
