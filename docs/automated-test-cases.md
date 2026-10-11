@@ -44,6 +44,12 @@
 | AT-16 数值单位与大小 | US-029 | 上传时输入切块 1000、重叠 100，查看精确文件字节数；检查目标超时 30 秒、耗时 20 毫秒、token 用量、30% 比例、0.8 阈值及缺失值 | 每个输入/读数旁有正确双语单位或无单位范围；相似度为 -1 至 1、评分为 0 至 1；原始提交值分别仍为 1000、100、30、0.3、0.8；未知不写成 0；窄屏不截断标签 | [文档上传与字节数](../frontend/src/documents/DocumentCollectionPage.test.tsx)、[生成比例](../frontend/src/generations/GenerationPage.test.tsx)、[目标秒数](../frontend/src/targets/TargetPage.test.tsx)、[匹配阈值](../frontend/src/predictions/MatchingPreview.test.tsx)、[运行耗时与评分](../frontend/src/runs/RunPage.test.tsx)、[用量缺失值](../frontend/src/usage/UsagePanel.test.tsx)、[窄屏与跨页](../frontend/e2e/surfaces.spec.ts) |
 | AT-17 在线模型校验和维护 | US-030 | 使用有效或错误的 URL/模型标识/Token 新增与编辑；保留、替换、清除凭据；删除空闲模型和尝试删除在途任务模型 | 校验请求使用 JSON 模式并检查实际响应；失败不落库或泄漏 Token；编辑与删除更新可选列表和密钥，运行中冲突被拒绝，历史快照不变 | [模型 API 与存储](../backend/tests/test_online_models.py)、[生成模型界面](../frontend/src/generations/GenerationPage.test.tsx)、[浏览器关键路径](../frontend/e2e/critical-path.spec.ts) |
 
+### 待实现案例
+
+| 案例 | 对应故事 | 用户操作或测试输入 | 通过时应看到什么 | 计划测试层 |
+| --- | --- | --- | --- | --- |
+| AT-18 集合名称选择与追加 | US-031 | 两种导入入口分别输入唯一匹配、部分匹配、新名称和已有同名历史名称；选择已有集合并追加原文或 chunk；注入重复 ID、类型冲突、过期快照和并发创建 | 完整匹配归入正确集合，部分匹配不误归类；新名创建首版；追加产生新快照且旧清单、原文、候选及数据集引用不变；失败整批回滚；双语组合框在键盘和窄屏下可用 | 后端 API/存储/下载与生成集成测试，前端组件测试，Playwright 创建与追加闭环 |
+
 ## 几个容易误读的结果
 
 **导入失败并非“导入了一部分”。** 金标准、预测批次和文档集合测试都会混入错误数据，核对错误定位与事务结果。若文件有无效行，应看到错误提示，且不新增半成品数据集版本或批次。已有版本仍能读取。

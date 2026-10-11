@@ -28,6 +28,8 @@ US-009 扩展目标协议为 SSE：`backend/adapters/sse_target.py` 使用 `http
 
 文档集合使用 `backend/domain/document_collections.py` 校验 TXT/Markdown、ID 与切块参数，`backend/adapters/document_store.py` 在一个 SQLite 事务中保存原始 BLOB、SHA-256 与有序切块。CSV/JSONL chunk 清单由 `backend/domain/chunk_manifests.py` 校验全局顺序、文档 ID、正文与重复项，同样原子保存。集合以 `source_kind` 区分 `original_files` 和 `chunks_only`；后者没有文件名、校验值、原始字节或下载 URL。管理 API 提供创建、清单导入、列表和详情，详情的 `chunks` 保留可供后续生成流程使用的全局顺序。`backend/download/` 作为独立 ASGI 进程读取同一业务库，只开放专用 Token 保护的清单和原文字节路由。
 
+US-031 待实现：在现有不可变集合快照之上增加稳定的逻辑集合身份和当前快照指针。名称检索、规范化唯一性和来源类型校验由管理 API/存储层执行；可输入下拉框只负责呈现候选与提交选中的集合 ID，不能把前端匹配当作并发控制。新建写入首个快照；追加在单个事务内检查预期当前快照、沿用原文切块配置、校验新旧 `document_id` 不冲突，并写入包含既有内容与新增内容的新快照，再推进当前指针。已有快照 ID 与文件下载地址保持可读；生成任务、候选和数据集来源继续固定引用快照 ID。旧版同名记录迁移时保留各自快照身份，遇到多项匹配要求用户显式选择。实现前需扩展 OpenAPI 及前端生成类型，并用契约/数据库/浏览器测试验证创建、追加、冲突和旧快照不变；详见 [US-031](stories.md#us-031-文档集合名称选择与追加依赖us-013us-015us-016)。
+
 US-014 的 `backend/adapters/document_text.py` 使用 python-docx 提取 DOCX 的正文和表格文本，使用 pypdf 提取文本 PDF 的页面内容。提取出的文本交给同一切块校验流程；扫描版和受保护 PDF、损坏文件以文件级错误拒绝，原始 BLOB 与校验值保持上传时的内容。原文下载仍由 US-016 接入。
 
 US-017 的生成边界：`backend/domain/generation.py` 按固定顺序分配单/多 chunk 配额与来源；`backend/adapters/generation_model.py` 调用在线 OpenAI 兼容模型，要求结果只引用本次提供的 chunk 位置；`backend/adapters/generation_store.py` 原子保存任务、尝试和待审核候选。Huey Worker 以任务状态原子领取防止重复执行，最多 4 个并发模型请求，受任务最大调用次数约束。失败响应只保存诊断代码，合格候选仍可查看；模型凭据沿用受保护的在线模型配置，不进入任务快照。US-018 的 `backend/domain/candidate_review.py` 校验审核字段和当前集合来源，存储层原子保存候选状态及完整修订快照；API 以修订号拒绝覆盖并发编辑，React 生成页提供来源选择、排序、批准和历史查看。US-019 的 `backend/domain/candidate_duplicates.py` 生成确定性查重证据，存储层保存每次结论与疑似放行审计，并在发布事务中重新核对来源集合内的新证据。
