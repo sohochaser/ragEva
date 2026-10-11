@@ -4,6 +4,8 @@ from collections.abc import Awaitable, Callable
 from typing import Literal
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -73,6 +75,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 fail(span, f"http_{response.status_code}")
             response.headers["X-Request-ID"] = f"{span.get_span_context().trace_id:032x}"
             return response
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, error: RequestValidationError) -> Response:
+        if request.url.path.startswith("/api/v1/online-models"):
+            details = [
+                {key: value for key, value in issue.items() if key in {"type", "loc", "msg"}}
+                for issue in error.errors()
+            ]
+            return JSONResponse(status_code=422, content={"detail": details})
+        return await request_validation_exception_handler(request, error)
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live() -> HealthResponse:

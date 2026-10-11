@@ -25,12 +25,15 @@ describe('ScenarioPage', () => {
     const user = userEvent.setup()
     render(<ScenarioPage />)
     await screen.findByRole('button', { name: /新建场景/ })
-    const modelForm = screen.getByRole('button', { name: /保存模型/ }).closest('form')!
-    await user.type(within(modelForm).getByRole('textbox', { name: /模型名称/ }), 'Judge')
+    const modelForm = screen.getByRole('button', { name: /校验并保存模型/ }).closest('form')!
+    await user.type(within(modelForm).getByRole('textbox', { name: /配置名称/ }), 'Judge')
+    await user.type(within(modelForm).getByRole('textbox', { name: /模型标识/ }), 'judge-v1')
     await user.type(within(modelForm).getByRole('textbox', { name: /OpenAI 兼容 API 地址/ }), 'https://model.example/v1')
     await user.type(within(modelForm).getByLabelText(/Bearer Token/), 'private-key')
-    await user.click(within(modelForm).getByRole('button', { name: /保存模型/ }))
+    await user.click(within(modelForm).getByRole('button', { name: /校验并保存模型/ }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/online-models', expect.objectContaining({ method: 'POST' })))
+    const modelRequest = fetchMock.mock.calls.find(([url, options]) => url === '/api/v1/online-models' && options?.method === 'POST')
+    expect(JSON.parse(String(modelRequest?.[1]?.body)).model_name).toBe('judge-v1')
     expect(within(modelForm).getByLabelText(/Bearer Token/).getAttribute('value')).toBe('')
 
     const scenarioForm = screen.getByRole('button', { name: /创建场景/ }).closest('form')!

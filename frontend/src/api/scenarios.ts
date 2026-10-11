@@ -2,6 +2,7 @@ import type { components } from './schema'
 
 export type OnlineModel = components['schemas']['OnlineModelSummary']
 export type OnlineModelCreate = components['schemas']['OnlineModelCreate']
+export type OnlineModelUpdate = components['schemas']['OnlineModelUpdate']
 export type Scenario = components['schemas']['ScenarioVersion']
 export type ScenarioCreate = components['schemas']['ScenarioCreate']
 export type ScenarioCriteria = components['schemas']['ScenarioCriteria']
@@ -26,6 +27,14 @@ async function send<T>(url: string, method: 'POST' | 'PUT', body: object): Promi
 
 export const fetchModels = () => readJson<OnlineModel[]>(fetch('/api/v1/online-models'))
 export const addModel = (body: OnlineModelCreate) => send<OnlineModel>('/api/v1/online-models', 'POST', body)
+export const updateModel = (id: string, body: OnlineModelUpdate) => send<OnlineModel>(`/api/v1/online-models/${encodeURIComponent(id)}`, 'PUT', body)
+export const deleteModel = async (id: string) => {
+  const response = await fetch(`/api/v1/online-models/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { detail?: string } | null
+    throw new Error(typeof payload?.detail === 'string' ? payload.detail : `Request failed（请求失败） (${response.status})`)
+  }
+}
 export const fetchScenarios = () => readJson<Scenario[]>(fetch('/api/v1/scenarios'))
 export const fetchScenarioVersions = (id: string) => readJson<Scenario[]>(fetch(`/api/v1/scenarios/${encodeURIComponent(id)}/versions`))
 export const fetchPromptTemplate = () => readJson<PromptTemplate>(fetch('/api/v1/scenarios/template'))

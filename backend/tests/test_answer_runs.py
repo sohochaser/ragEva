@@ -15,8 +15,9 @@ from backend.worker.run_processor import process_run
 def test_answer_run_isolates_metrics_and_aggregates_only_valid_scores(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from backend.api import runs
+    from backend.api import online_models, runs
 
+    monkeypatch.setattr(online_models, "probe_online_model", lambda *_: None)
     monkeypatch.setattr(runs, "worker_is_ready", lambda *_: True)
     monkeypatch.setattr(runs, "score_run_task", lambda _id, _context=None: None)
     api = TestClient(create_app(Settings(data_dir=tmp_path)))
