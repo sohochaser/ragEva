@@ -9,6 +9,7 @@ import { PredictionPage } from './predictions/PredictionPage'
 import { RunPage } from './runs/RunPage'
 import { ScenarioPage } from './scenarios/ScenarioPage'
 import { TargetPage } from './targets/TargetPage'
+import { RequestLogViewer } from './trace/RequestLogViewer'
 
 type StatusDashboardProps = {
   api: ServiceState
@@ -130,6 +131,7 @@ export function StatusDashboard({ api, worker, refreshedAt, onRefresh }: StatusD
             API Docs（API 文档） <ArrowUpRight size={16} aria-hidden="true" />
           </a>
         </section>
+        <RequestLogViewer />
     </>
   )
 }

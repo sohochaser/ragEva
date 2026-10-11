@@ -161,11 +161,13 @@ def test_write_failure_rolls_back_dataset_and_version(
         raise RuntimeError("snapshot write failed")
 
     monkeypatch.setattr(PublicationStore, "record_published_candidate", fail)
-    with pytest.raises(RuntimeError, match="snapshot write failed"):
-        api.post(
-            "/api/v1/candidates/publish",
-            json={"candidate_ids": [candidate_id], "dataset_name": "Atomic"},
-        )
+    response = api.post(
+        "/api/v1/candidates/publish",
+        json={"candidate_ids": [candidate_id], "dataset_name": "Atomic"},
+    )
+    assert response.status_code == 500
+    assert response.headers["x-request-id"]
+    assert "snapshot write failed" not in response.text
     assert api.get("/api/v1/datasets").json() == []
 
 
