@@ -43,22 +43,22 @@ it('publishes approved candidates to a new or existing version', async () => {
   const onOpenDatasets = vi.fn()
   const user = userEvent.setup()
   render(<PublishCandidates candidates={candidates} onOpenDatasets={onOpenDatasets} />)
-  await screen.findByRole('button', { name: '已有数据集' })
+  await screen.findByRole('button', { name: /已有数据集/ })
   expect(screen.queryByText('Second question')).toBeNull()
   await user.click(screen.getByRole('checkbox', { name: 'First question' }))
-  await user.type(screen.getByRole('textbox', { name: '数据集名称' }), 'Generated gold')
-  await user.click(screen.getByRole('button', { name: '发布为数据集版本' }))
+  await user.type(screen.getByRole('textbox', { name: /数据集名称/ }), 'Generated gold')
+  await user.click(screen.getByRole('button', { name: /发布为数据集版本/ }))
   await waitFor(() => expect(requests[0]).toMatchObject({
     candidate_ids: ['one'], dataset_name: 'Generated gold', expected_version: null,
   }))
-  expect(await screen.findByText('已发布 v1 · 1 条样本')).toBeTruthy()
-  await user.click(screen.getByRole('button', { name: '查看数据集' }))
+  expect(await screen.findByText('Published（已发布） v1 · 1 cases（1 条样本）')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: /查看数据集/ }))
   expect(onOpenDatasets).toHaveBeenCalledWith(expect.objectContaining({ dataset_id: 'new', version: 1 }))
 
-  await user.click(screen.getByRole('button', { name: '已有数据集' }))
-  await user.selectOptions(screen.getByRole('combobox', { name: '数据集' }), 'existing')
+  await user.click(screen.getByRole('button', { name: /已有数据集/ }))
+  await user.selectOptions(screen.getByRole('combobox', { name: /数据集/ }), 'existing')
   await user.click(screen.getByRole('checkbox', { name: 'First question' }))
-  await user.click(screen.getByRole('button', { name: '发布为数据集版本' }))
+  await user.click(screen.getByRole('button', { name: /发布为数据集版本/ }))
   await waitFor(() => expect(requests[1]).toMatchObject({
     candidate_ids: ['one'], dataset_id: 'existing', expected_version: 1,
   }))

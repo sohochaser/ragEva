@@ -16,12 +16,13 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, Sp
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from backend.adapters.dataset_store import DatasetStore
+from backend.adapters.request_log_store import RequestLogStore
 from backend.adapters.target_store import TargetStore
 from backend.adapters.trace_store import TraceStore
 from backend.api.main import create_app
 from backend.config import Settings
 from backend.domain.datasets import EvaluationCase, ReferenceChunk
-from backend.tracing import attributes, business_span, fail, received, tracer
+from backend.tracing import attributes, business_span, fail, received, request_log_scope, tracer
 from backend.worker.run_processor import process_run
 from backend.worker.target_collector import collect_target_job
 
@@ -107,13 +108,38 @@ def test_queue_context_case_spans_and_sensitive_field_boundary(
     created = api.post("/api/v1/runs", json={"prediction_batch_id": batch["id"]})
     assert created.status_code == 202
     run = created.json()
+    request_id = created.headers["x-request-id"]
+    assert request_id == run["trace"]["trace_id"]
     assert run["trace"]["status"] == "available"
     assert run["dataset_trace"]["trace_id"] != run["trace"]["trace_id"]
     assert run["prediction_trace"]["trace_id"] != run["trace"]["trace_id"]
     assert queued[0]["traceparent"].split("-")[1] == run["trace"]["trace_id"]
 
-    with received(queued[0]), tracer().start_as_current_span("run.worker"):
+    with (
+        request_log_scope(RequestLogStore(tmp_path)),
+        received(queued[0]),
+        tracer().start_as_current_span("run.worker"),
+    ):
         process_run(run["id"], tmp_path, encoder_factory=Encoder)
+
+    log_response = api.get(f"/api/v1/request-logs/{request_id}")
+    assert log_response.status_code == 200
+    request_log = log_response.json()
+    assert request_log["status"] == "failed"
+    assert {step["name"] for step in request_log["spans"]} >= {
+        "http.request",
+        "run.create",
+        "run.worker",
+        "run.case",
+        "retrieval.embed",
+        "run.persist",
+    }
+    errors = [step for step in request_log["spans"] if step["status"] == "failed"]
+    assert any(step["error_code"] == "model_error" for step in errors)
+    assert all(step["error_detail"] for step in errors)
+    assert "PRIVATE_RESPONSE" not in log_response.text
+    assert "TOP_SECRET" not in log_response.text
+    assert api.get("/api/v1/request-logs").json()[0]["request_id"] == request_id
 
     cases = api.get(f"/api/v1/runs/{run['id']}/cases").json()["cases"]
     case = cases[0]
@@ -168,6 +194,33 @@ def test_trace_retention_and_unavailable_jaeger_do_not_hide_evidence(tmp_path: P
     assert expired is not None and expired["status"] == "expired" and expired["url"] is None
     unconfigured = store.get("run", "one", Settings(data_dir=tmp_path))
     assert unconfigured is not None and unconfigured["status"] == "unconfigured"
+
+
+def test_request_logs_include_http_errors_and_reject_unknown_ids(tmp_path: Path) -> None:
+    app = create_app(Settings(data_dir=tmp_path))
+
+    @app.get("/api/v1/broken")
+    def broken() -> None:
+        raise RuntimeError("PRIVATE_EXCEPTION_TEXT")
+
+    api = TestClient(app)
+    response = api.post("/api/v1/runs", json={"prediction_batch_id": ""})
+    assert response.status_code == 422
+    request_id = response.headers["x-request-id"]
+    detail = api.get(f"/api/v1/request-logs/{request_id}").json()
+    assert detail["status"] == "failed"
+    assert detail["http_status"] == 422
+    assert detail["method"] == "POST" and detail["route"] == "/api/v1/runs"
+    assert any(step["error_code"] == "http_422" for step in detail["spans"])
+    assert api.get("/api/v1/request-logs/not-a-trace").status_code == 404
+    assert api.get(f"/api/v1/request-logs/{'a' * 32}").status_code == 404
+    assert api.get("/api/v1/request-logs").headers.get("x-request-id") is None
+    failed = api.get("/api/v1/broken")
+    assert failed.status_code == 500
+    assert failed.headers["x-request-id"]
+    log = api.get(f"/api/v1/request-logs/{failed.headers['x-request-id']}")
+    assert log.json()["spans"][0]["error_detail"] == "HTTP 500 请求失败（RuntimeError）"
+    assert "PRIVATE_EXCEPTION_TEXT" not in log.text
 
 
 def test_target_retries_link_to_batch_and_scoring_run(
@@ -270,6 +323,8 @@ def test_trace_attributes_reject_body_or_auth_fields() -> None:
         with pytest.raises(ValueError, match="Disallowed"):
             attributes(span, Authorization="Bearer secret")
         fail(span, "PRIVATE_SECRET")
+        fail(span, "model_PRIVATE_TOKEN")
+        fail(span, "http_PRIVATE_TOKEN")
     recorded = exporter.get_finished_spans()[-1]
     assert recorded.attributes is not None
     assert recorded.attributes["error.code"] == "operation_error"
