@@ -233,6 +233,13 @@ h1 { margin: 0; color: var(--ink); font-size: 30px; font-weight: 700; line-heigh
 .import-issues li + li { margin-top: 5px; }
 .document-file-ids { display: grid; gap: 10px; max-height: 220px; overflow: auto; }
 .document-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.collection-name-picker { position: relative; min-width: 0; }
+.collection-name-options { position: absolute; z-index: 20; top: 100%; left: 0; right: 0; max-height: 190px; overflow: auto; border: 1px solid #cfd4d9; background: #fff; box-shadow: 0 10px 22px #30394222; }
+.collection-name-options button { width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 0; border-bottom: 1px solid #edf0f2; border-radius: 0; background: #fff; color: #343f49; text-align: left; cursor: pointer; }
+.collection-name-options button:hover, .collection-name-options button.active { background: #fceaf0; }
+.collection-name-options button span { color: #606b75; font-size: 12px; }
+.collection-target { margin: -10px 0 0; color: #4d5964; font-size: 12px; }
+.collection-versions { max-width: 360px; margin: 12px 24px; }
 .document-detail-list { max-height: 76vh; overflow: auto; }
 .document-detail { padding: 20px 22px; border-bottom: 1px solid #e2e5e8; }
 .document-detail-header { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 13px; }

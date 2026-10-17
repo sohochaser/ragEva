@@ -9,6 +9,8 @@ from httpx import Response
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
+from backend.adapters.document_store import DocumentStore
+from backend.adapters.generation_store import GenerationStore
 from backend.api.main import create_app
 from backend.config import Settings
 
@@ -24,10 +26,17 @@ def upload(
     document_ids: str | None = None,
     chunk_size: int = 4,
     chunk_overlap: int = 1,
+    name: str = "知识文档",
+    group_id: str | None = None,
+    expected_version: int | None = None,
 ) -> Response:
-    data = {"name": "知识文档", "chunk_size": str(chunk_size), "chunk_overlap": str(chunk_overlap)}
+    data = {"name": name, "chunk_size": str(chunk_size), "chunk_overlap": str(chunk_overlap)}
     if document_ids is not None:
         data["document_ids"] = document_ids
+    if group_id is not None:
+        data["group_id"] = group_id
+    if expected_version is not None:
+        data["expected_version"] = str(expected_version)
     return api.post(
         "/api/v1/document-collections",
         data=data,
@@ -144,9 +153,104 @@ def test_ids_empty_files_formats_and_chunk_settings_are_rejected(tmp_path: Path)
 def test_snapshot_does_not_change_after_new_upload(tmp_path: Path) -> None:
     api = client(tmp_path)
     first = upload(api, [("a.txt", b"abcdef")]).json()
-    second = upload(api, [("a.txt", b"new text")], chunk_size=6, chunk_overlap=0).json()
+    second = upload(api, [("b.txt", b"new text")], name=" 知识文档 ").json()
     assert first["id"] != second["id"]
+    assert first["group_id"] == second["group_id"]
+    assert (first["version"], second["version"]) == (1, 2)
+    assert [doc["document_id"] for doc in second["documents"]] == ["a-1", "b-1"]
+    assert api.get("/api/v1/document-collections").json()[0]["id"] == second["id"]
     assert api.get(f"/api/v1/document-collections/{first['id']}").json() == first
+
+
+def test_existing_name_reuses_collection_and_generated_id_continues(tmp_path: Path) -> None:
+    api = client(tmp_path)
+    first = upload(api, [("guide.txt", b"first")], name="Guides").json()
+    second = upload(api, [("guide.md", b"second")], name=" guides ").json()
+    assert second["group_id"] == first["group_id"]
+    assert [doc["document_id"] for doc in second["documents"]] == ["guide-1", "guide-2"]
+    versions = api.get(f"/api/v1/document-collections/{second['id']}/versions")
+    assert versions.status_code == 200
+    assert [item["id"] for item in versions.json()] == [second["id"], first["id"]]
+    assert api.get(f"/api/v1/document-collections/{first['id']}").json() == first
+
+
+def test_append_rejects_duplicate_ids_changed_settings_stale_and_wrong_kind(tmp_path: Path) -> None:
+    api = client(tmp_path)
+    first = upload(api, [("a.txt", b"first")]).json()
+    base = dict(group_id=first["group_id"], expected_version=1)
+    duplicate = upload(api, [("b.txt", b"second")], document_ids='["a-1"]', **base)
+    assert duplicate.status_code == 422
+    assert duplicate.json()["issues"][0]["code"] == "duplicate_document_id"
+    changed = upload(api, [("b.txt", b"second")], chunk_size=8, chunk_overlap=1, **base)
+    assert changed.status_code == 409
+    assert upload(api, [("b.txt", b"second")], **base).status_code == 201
+    stale = upload(api, [("c.txt", b"third")], **base)
+    assert stale.status_code == 409
+    assert len(api.get("/api/v1/document-collections").json()) == 1
+    wrong_kind = api.post(
+        "/api/v1/document-collections/import-chunks",
+        data={"name": "知识文档"},
+        files={"file": ("chunks.csv", b"position,document_id,text\n0,new,content\n")},
+    )
+    assert wrong_kind.status_code == 409
+
+
+def test_existing_database_migrates_without_changing_legacy_snapshot(tmp_path: Path) -> None:
+    path = tmp_path / "rageva.sqlite3"
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "CREATE TABLE document_collections "
+            "(id TEXT PRIMARY KEY, name TEXT NOT NULL, source_kind TEXT NOT NULL, "
+            "chunk_size INTEGER NOT NULL, chunk_overlap INTEGER NOT NULL, created_at TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO document_collections VALUES "
+            "('legacy', 'Legacy', 'original_files', 4, 1, '2026')"
+        )
+    assert DocumentStore(tmp_path).list()[0]["group_id"] == "legacy"
+    api = client(tmp_path)
+    new = upload(api, [("new.txt", b"text")], name="Legacy").json()
+    assert new["version"] == 2
+    assert api.get("/api/v1/document-collections/legacy").json()["version"] == 1
+
+
+def test_legacy_duplicate_names_require_explicit_group_choice(tmp_path: Path) -> None:
+    path = tmp_path / "rageva.sqlite3"
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "CREATE TABLE document_collections "
+            "(id TEXT PRIMARY KEY, name TEXT NOT NULL, source_kind TEXT NOT NULL, "
+            "chunk_size INTEGER NOT NULL, chunk_overlap INTEGER NOT NULL, created_at TEXT NOT NULL)"
+        )
+        connection.executemany(
+            "INSERT INTO document_collections VALUES "
+            "(?, 'Duplicate', 'original_files', 4, 1, '2026')",
+            [("old-a",), ("old-b",)],
+        )
+    api = client(tmp_path)
+    assert upload(api, [("new.txt", b"text")], name="Duplicate").status_code == 409
+    result = upload(
+        api,
+        [("new.txt", b"text")],
+        name="Duplicate",
+        group_id="old-b",
+        expected_version=1,
+    )
+    assert result.status_code == 201
+    assert result.json()["group_id"] == "old-b"
+    assert len(api.get("/api/v1/document-collections").json()) == 2
+
+
+def test_generation_run_keeps_original_snapshot_after_append(tmp_path: Path) -> None:
+    api = client(tmp_path)
+    first = upload(api, [("first.txt", b"text")]).json()
+    generation = GenerationStore(tmp_path)
+    run = generation.create_run(first["id"], {"model_name": "stub"}, 1, 0, 3, 1)
+    second = upload(api, [("second.txt", b"more")]).json()
+    assert run["collection_id"] == first["id"]
+    assert generation.get(run["id"])["collection_id"] == first["id"]
+    assert len(generation.get_collection(first["id"])["documents"]) == 1
+    assert len(generation.get_collection(second["id"])["documents"]) == 2
 
 
 def test_docx_and_text_pdf_extract_in_order_but_keep_original_bytes(tmp_path: Path) -> None:

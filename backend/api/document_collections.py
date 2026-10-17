@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.adapters.dataset_files import read_rows
-from backend.adapters.document_store import CollectionNotFound, DocumentStore
+from backend.adapters.document_store import CollectionConflict, CollectionNotFound, DocumentStore
 from backend.adapters.document_text import extract_document_text
 from backend.adapters.trace_store import TraceStore
 from backend.config import Settings
@@ -66,6 +66,8 @@ class ChunkImportFailure(BaseModel):
 
 class CollectionSummary(BaseModel):
     id: str
+    group_id: str
+    version: int
     name: str
     source_kind: str
     chunk_size: int
@@ -75,6 +77,8 @@ class CollectionSummary(BaseModel):
 
 
 class CollectionDetail(CollectionSummary):
+    added_document_count: int
+    added_chunk_count: int
     documents: list[SourceDocumentResponse]
     chunks: list[CollectionChunkResponse]
 
@@ -99,6 +103,19 @@ def _chunk_failure(issues: list[ImportIssue]) -> JSONResponse:
     )
 
 
+def _conflict(exc: CollectionConflict) -> HTTPException:
+    messages = {
+        "unknown_selection": "选中的集合不存在或名称已改变",
+        "ambiguous_name": "存在多个同名集合，请明确选择一个",
+        "source_kind_conflict": "该名称已用于另一种文档集合类型",
+        "stale_version": "集合已更新，请刷新后重试",
+        "chunk_config_conflict": "追加原文必须沿用集合现有切块配置",
+        "duplicate_document_id": "文档 ID 已存在于该集合",
+        "missing_snapshot": "集合当前快照不存在",
+    }
+    return HTTPException(status_code=409, detail=messages.get(exc.code, exc.code))
+
+
 def create_document_collection_router(settings: Settings) -> APIRouter:
     router = APIRouter(prefix="/api/v1/document-collections", tags=["document-collections"])
     store = DocumentStore(settings.data_dir)
@@ -116,6 +133,8 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
         chunk_size: Annotated[int, Form()] = 1000,
         chunk_overlap: Annotated[int, Form()] = 100,
         document_ids: Annotated[str | None, Form()] = None,
+        group_id: Annotated[str | None, Form()] = None,
+        expected_version: Annotated[int | None, Form()] = None,
     ) -> CollectionDetail | JSONResponse:
         issues: list[DocumentIssue] = []
         if not name.strip():
@@ -145,6 +164,17 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
                 )
         if issues:
             return _failure(issues)
+        if group_id and expected_version is None:
+            raise HTTPException(status_code=409, detail="追加集合需要当前快照版本")
+        try:
+            target = store.resolve(name.strip(), "original_files", group_id)
+        except CollectionConflict as exc:
+            raise _conflict(exc) from exc
+        if target is not None:
+            if chunk_size != target["chunk_size"] or chunk_overlap != target["chunk_overlap"]:
+                raise _conflict(CollectionConflict("chunk_config_conflict"))
+            if expected_version is not None and target["version"] != expected_version:
+                raise _conflict(CollectionConflict("stale_version"))
         uploads: list[tuple[str, bytes]] = []
         for index, file in enumerate(files):
             content = await file.read(MAX_FILE_BYTES + 1)
@@ -162,12 +192,22 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
         if issues:
             return _failure(issues)
         documents, issues = validate_documents(
-            uploads, parsed_ids, chunk_size, chunk_overlap, extract_document_text
+            uploads,
+            parsed_ids,
+            chunk_size,
+            chunk_overlap,
+            extract_document_text,
+            {doc["document_id"] for doc in target["documents"]} if target else None,
         )
         if issues:
             return _failure(issues)
         with business_span("collection.import") as span:
-            result = store.create(name.strip(), documents, chunk_size, chunk_overlap)
+            try:
+                result = store.save_documents(
+                    name.strip(), documents, chunk_size, chunk_overlap, group_id, expected_version
+                )
+            except CollectionConflict as exc:
+                raise _conflict(exc) from exc
             attributes(span, **{"collection.id": result["id"], "count": len(documents)})
             traces.record("collection", result["id"], span)
         return CollectionDetail(**result)
@@ -179,12 +219,17 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
         responses={422: {"model": ChunkImportFailure}},
     )
     async def import_chunks(
-        file: Annotated[UploadFile, File()], name: Annotated[str, Form()]
+        file: Annotated[UploadFile, File()],
+        name: Annotated[str, Form()],
+        group_id: Annotated[str | None, Form()] = None,
+        expected_version: Annotated[int | None, Form()] = None,
     ) -> CollectionDetail | JSONResponse:
         if not name.strip() or len(name.strip()) > 120:
             return _chunk_failure(
                 [ImportIssue(None, "name", "invalid_name", "集合名称须为 1–120 字符")]
             )
+        if group_id and expected_version is None:
+            raise HTTPException(status_code=409, detail="追加集合需要当前快照版本")
         content = await file.read(MAX_FILE_BYTES + 1)
         if len(content) > MAX_FILE_BYTES:
             return _chunk_failure(
@@ -200,7 +245,10 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
         if issues:
             return _chunk_failure(issues)
         with business_span("collection.import") as span:
-            result = store.create_from_chunks(name.strip(), chunks)
+            try:
+                result = store.save_chunks(name.strip(), chunks, group_id, expected_version)
+            except CollectionConflict as exc:
+                raise _conflict(exc) from exc
             attributes(span, **{"collection.id": result["id"], "count": len(chunks)})
             traces.record("collection", result["id"], span)
         return CollectionDetail(**result)
@@ -213,6 +261,13 @@ def create_document_collection_router(settings: Settings) -> APIRouter:
     def get_collection(collection_id: str) -> CollectionDetail:
         try:
             return CollectionDetail(**store.get(collection_id))
+        except CollectionNotFound as exc:
+            raise HTTPException(status_code=404, detail="文档集合不存在") from exc
+
+    @router.get("/{collection_id}/versions", response_model=list[CollectionSummary])
+    def list_versions(collection_id: str) -> list[CollectionSummary]:
+        try:
+            return [CollectionSummary(**item) for item in store.versions(collection_id)]
         except CollectionNotFound as exc:
             raise HTTPException(status_code=404, detail="文档集合不存在") from exc
 

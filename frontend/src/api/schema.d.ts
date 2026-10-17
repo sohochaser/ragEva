@@ -262,6 +262,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/document-collections/{collection_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Versions */
+        get: operations["list_versions_api_v1_document_collections__collection_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/generations": {
         parameters: {
             query?: never;
@@ -884,15 +901,23 @@ export interface components {
             chunk_size: number;
             /** Document Ids */
             document_ids?: string | null;
+            /** Expected Version */
+            expected_version?: number | null;
             /** Files */
             files: string[];
+            /** Group Id */
+            group_id?: string | null;
             /** Name */
             name: string;
         };
         /** Body_import_chunks_api_v1_document_collections_import_chunks_post */
         Body_import_chunks_api_v1_document_collections_import_chunks_post: {
+            /** Expected Version */
+            expected_version?: number | null;
             /** File */
             file: string;
+            /** Group Id */
+            group_id?: string | null;
             /** Name */
             name: string;
         };
@@ -1041,6 +1066,10 @@ export interface components {
         };
         /** CollectionDetail */
         CollectionDetail: {
+            /** Added Chunk Count */
+            added_chunk_count: number;
+            /** Added Document Count */
+            added_document_count: number;
             /** Chunk Overlap */
             chunk_overlap: number;
             /** Chunk Size */
@@ -1053,12 +1082,16 @@ export interface components {
             document_count: number;
             /** Documents */
             documents: components["schemas"]["SourceDocumentResponse"][];
+            /** Group Id */
+            group_id: string;
             /** Id */
             id: string;
             /** Name */
             name: string;
             /** Source Kind */
             source_kind: string;
+            /** Version */
+            version: number;
         };
         /** CollectionImportFailure */
         CollectionImportFailure: {
@@ -1077,12 +1110,16 @@ export interface components {
             created_at: string;
             /** Document Count */
             document_count: number;
+            /** Group Id */
+            group_id: string;
             /** Id */
             id: string;
             /** Name */
             name: string;
             /** Source Kind */
             source_kind: string;
+            /** Version */
+            version: number;
         };
         /** DatasetSummary */
         DatasetSummary: {
@@ -2770,6 +2807,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GenerationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_versions_api_v1_document_collections__collection_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionSummary"][];
                 };
             };
             /** @description Validation Error */

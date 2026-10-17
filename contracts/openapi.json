@@ -155,6 +155,17 @@
             ],
             "title": "Document Ids"
           },
+          "expected_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
           "files": {
             "items": {
               "contentMediaType": "application/octet-stream",
@@ -162,6 +173,17 @@
             },
             "title": "Files",
             "type": "array"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
           },
           "name": {
             "title": "Name",
@@ -177,10 +199,32 @@
       },
       "Body_import_chunks_api_v1_document_collections_import_chunks_post": {
         "properties": {
+          "expected_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
           "file": {
             "contentMediaType": "application/octet-stream",
             "title": "File",
             "type": "string"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
           },
           "name": {
             "title": "Name",
@@ -660,6 +704,14 @@
       },
       "CollectionDetail": {
         "properties": {
+          "added_chunk_count": {
+            "title": "Added Chunk Count",
+            "type": "integer"
+          },
+          "added_document_count": {
+            "title": "Added Document Count",
+            "type": "integer"
+          },
           "chunk_overlap": {
             "title": "Chunk Overlap",
             "type": "integer"
@@ -690,6 +742,10 @@
             "title": "Documents",
             "type": "array"
           },
+          "group_id": {
+            "title": "Group Id",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -701,16 +757,24 @@
           "source_kind": {
             "title": "Source Kind",
             "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
           "id",
+          "group_id",
+          "version",
           "name",
           "source_kind",
           "chunk_size",
           "chunk_overlap",
           "created_at",
           "document_count",
+          "added_document_count",
+          "added_chunk_count",
           "documents",
           "chunks"
         ],
@@ -756,6 +820,10 @@
             "title": "Document Count",
             "type": "integer"
           },
+          "group_id": {
+            "title": "Group Id",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -767,10 +835,16 @@
           "source_kind": {
             "title": "Source Kind",
             "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
           "id",
+          "group_id",
+          "version",
           "name",
           "source_kind",
           "chunk_size",
@@ -5069,6 +5143,52 @@
         "summary": "Create",
         "tags": [
           "generations"
+        ]
+      }
+    },
+    "/api/v1/document-collections/{collection_id}/versions": {
+      "get": {
+        "operationId": "list_versions_api_v1_document_collections__collection_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "title": "Collection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionSummary"
+                  },
+                  "title": "Response List Versions Api V1 Document Collections  Collection Id  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Versions",
+        "tags": [
+          "document-collections"
         ]
       }
     },

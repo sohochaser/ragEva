@@ -37,6 +37,7 @@ def validate_documents(
     chunk_size: int,
     chunk_overlap: int,
     extract_binary_text: Callable[[str, bytes], str] | None = None,
+    existing_ids: set[str] | None = None,
 ) -> tuple[list[SourceDocument], list[DocumentIssue]]:
     issues: list[DocumentIssue] = []
     if not uploads:
@@ -65,7 +66,7 @@ def validate_documents(
         return [], issues
 
     documents: list[SourceDocument] = []
-    used_ids: set[str] = set()
+    used_ids: set[str] = set(existing_ids or ())
     reserved_ids = {value.strip() for value in document_ids or [] if value is not None}
     generated_counts: dict[str, int] = {}
     for index, (raw_name, content) in enumerate(uploads):

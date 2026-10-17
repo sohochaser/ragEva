@@ -25,7 +25,7 @@ describe('DocumentCollectionPage', () => {
     await screen.findByText(/暂无文档集合/)
     await user.click(screen.getByRole('button', { name: /上传原文/ }))
     const dialog = screen.getByRole('dialog', { name: /上传原文/ })
-    await user.type(within(dialog).getByRole('textbox', { name: /集合名称/ }), '测试集合')
+    await user.type(within(dialog).getByRole('combobox', { name: /集合名称/ }), '测试集合')
     await user.upload(within(dialog).getByLabelText(/原文文件/), new File(['bad'], 'broken.txt'))
     expect(within(dialog).getByRole('textbox', { name: 'broken.txt · 3 bytes（字节） · Document ID（文档 ID）' })).toBeTruthy()
     expect((within(dialog).getByRole('spinbutton', { name: 'Chunk Size (characters)（切块大小，字符）' }) as HTMLInputElement).value).toBe('1000')
@@ -56,7 +56,7 @@ describe('DocumentCollectionPage', () => {
     await screen.findByText(/暂无文档集合/)
     await user.click(screen.getByRole('button', { name: /上传原文/ }))
     const dialog = screen.getByRole('dialog', { name: /上传原文/ })
-    await user.type(within(dialog).getByRole('textbox', { name: /集合名称/ }), 'PDF 集合')
+    await user.type(within(dialog).getByRole('combobox', { name: /集合名称/ }), 'PDF 集合')
     const input = within(dialog).getByLabelText(/原文文件/) as HTMLInputElement
     expect(input.accept).toContain('.docx')
     expect(input.accept).toContain('.pdf')
@@ -95,7 +95,7 @@ describe('DocumentCollectionPage', () => {
     await screen.findByText(/暂无文档集合/)
     await user.click(screen.getByRole('button', { name: /导入 chunk 清单/ }))
     const dialog = screen.getByRole('dialog', { name: /导入 chunk 清单/ })
-    await user.type(within(dialog).getByRole('textbox', { name: /集合名称/ }), '已有切块')
+    await user.type(within(dialog).getByRole('combobox', { name: /集合名称/ }), '已有切块')
     await user.upload(within(dialog).getByLabelText(/清单文件/), new File(['position,document_id,text\n0,doc-a,第一段'], 'chunks.csv'))
     fireEvent.submit(dialog.querySelector('form')!)
     await waitFor(() => expect(within(dialog).getByRole('alert').textContent).toContain('Line 3（第 3 行） · position'))
@@ -123,5 +123,52 @@ describe('DocumentCollectionPage', () => {
     expect(detail.textContent).toContain('1234567 bytes（字节）')
     expect(detail.textContent).toContain('3 characters（字符）')
     expect(detail.textContent).toContain('A😀中')
+  })
+
+  it('offers matching collections and appends with the existing snapshot settings', async () => {
+    const first = {
+      id: 's1', group_id: 'group-1', version: 1, name: 'Guides', source_kind: 'original_files',
+      chunk_size: 4, chunk_overlap: 1, created_at: '2026-10-02', document_count: 1,
+      documents: [{ document_id: 'guide-1', filename: 'guide.txt', checksum: 'abc', byte_count: 5,
+        has_original_file: true, chunks: [{ position: 0, text: 'First' }] }],
+      chunks: [{ position: 0, document_id: 'guide-1', text: 'First' }],
+    }
+    const second = { ...first, id: 's2', version: 2, document_count: 2,
+      documents: [...first.documents, { document_id: 'new-1', filename: 'new.txt', checksum: 'def', byte_count: 6,
+        has_original_file: true, chunks: [{ position: 0, text: 'Second' }] }],
+      chunks: [...first.chunks, { position: 1, document_id: 'new-1', text: 'Second' }],
+    }
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+      if (options?.method === 'POST') return Promise.resolve(new Response(JSON.stringify(second), { status: 201 }))
+      if (url.endsWith('/versions')) return Promise.resolve(new Response(JSON.stringify([second, first])))
+      if (url === '/api/v1/document-collections') return Promise.resolve(new Response(JSON.stringify([first])))
+      return Promise.resolve(new Response(JSON.stringify(url.endsWith('s2') ? second : first)))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+    render(<DocumentCollectionPage />)
+    await screen.findByText('Guides')
+    await user.click(screen.getByRole('button', { name: /上传原文/ }))
+    const dialog = screen.getByRole('dialog', { name: /上传原文/ })
+    const picker = within(dialog).getByRole('combobox', { name: /集合名称/ })
+    await user.type(picker, 'Guid')
+    expect(within(dialog).getByRole('option', { name: /Guides/ })).toBeTruthy()
+    await user.keyboard('{Enter}')
+    expect((picker as HTMLInputElement).value).toBe('Guid')
+    await user.click(within(dialog).getByRole('option', { name: /Guides/ }))
+    expect(within(dialog).getByRole('status').textContent).toContain('Append to Guides')
+    const size = within(dialog).getByRole('spinbutton', { name: /切块大小/ }) as HTMLInputElement
+    expect(size.value).toBe('4')
+    expect(size.disabled).toBe(true)
+    await user.upload(within(dialog).getByLabelText(/原文文件/), new File(['Second'], 'new.txt', { type: 'text/plain' }))
+    expect((within(dialog).getByRole('button', { name: 'Upload（上传）' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.submit(dialog.querySelector('form')!)
+    await waitFor(() => expect(fetchMock.mock.calls.some((call) => call[1]?.method === 'POST')).toBe(true))
+    const post = fetchMock.mock.calls.find((call) => call[1]?.method === 'POST')![1]?.body as FormData
+    expect(post.get('group_id')).toBe('group-1')
+    expect(post.get('expected_version')).toBe('1')
+    expect(post.get('chunk_size')).toBe('4')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /快照版本/ })).toBeTruthy())
+    expect(screen.getAllByText(/2 document IDs/).length).toBeGreaterThan(0)
   })
 })

@@ -1,12 +1,15 @@
 import io
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 from httpx import Response
 
+from backend.adapters.document_store import DocumentStore
 from backend.api.main import create_app
 from backend.config import Settings
+from backend.domain.chunk_manifests import ManifestChunk
 
 
 def client(tmp_path: Path) -> TestClient:
@@ -90,3 +93,48 @@ def test_empty_bad_json_and_missing_columns_do_not_create_collection(tmp_path: P
         assert result.status_code == 422
         assert code in {issue["code"] for issue in result.json()["issues"]}
     assert api.get("/api/v1/document-collections").json() == []
+
+
+def test_append_chunk_manifest_rebases_positions_and_keeps_old_snapshot(tmp_path: Path) -> None:
+    api = client(tmp_path)
+    first = import_manifest(
+        api, "first.csv", b"position,document_id,text\n0,a,First\n1,b,Second\n"
+    ).json()
+    second = api.post(
+        "/api/v1/document-collections/import-chunks",
+        data={"name": "现有切块", "group_id": first["group_id"], "expected_version": "1"},
+        files={"file": ("next.csv", io.BytesIO(b"position,document_id,text\n0,c,Third\n"))},
+    )
+    assert second.status_code == 201
+    detail = second.json()
+    assert detail["version"] == 2
+    assert [(item["position"], item["document_id"]) for item in detail["chunks"]] == [
+        (0, "a"),
+        (1, "b"),
+        (2, "c"),
+    ]
+    assert api.get(f"/api/v1/document-collections/{first['id']}").json() == first
+    duplicate = api.post(
+        "/api/v1/document-collections/import-chunks",
+        data={"name": "现有切块", "group_id": first["group_id"], "expected_version": "2"},
+        files={"file": ("bad.csv", io.BytesIO(b"position,document_id,text\n0,a,Other\n"))},
+    )
+    assert duplicate.status_code == 409
+
+
+def test_concurrent_same_name_imports_share_one_logical_collection(tmp_path: Path) -> None:
+    store = DocumentStore(tmp_path)
+
+    def create(index: int) -> dict[str, object]:
+        return store.save_chunks("Concurrent", [ManifestChunk(0, f"doc-{index}", f"Text {index}")])
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(create, (1, 2)))
+    assert {item["version"] for item in results} == {1, 2}
+    listed = store.list()
+    assert len(listed) == 1
+    assert listed[0]["version"] == 2
+    assert {item["document_id"] for item in store.get(listed[0]["id"])["documents"]} == {
+        "doc-1",
+        "doc-2",
+    }
